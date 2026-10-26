@@ -15,6 +15,8 @@ concurrency: deploy-${{ github.event.inputs.target || 'dev' }}
 
 jobs:
   deploy:
+    # Enable once DATABRICKS_HOST/DATABRICKS_TOKEN secrets exist: repo variable DEPLOY_ENABLED=true
+    if: vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.target || 'dev' }}  # add required reviewers on `prod`
     env:
