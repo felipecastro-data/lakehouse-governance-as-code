@@ -1,0 +1,62 @@
+# Classification scheme and the controls attached to each level.
+# See docs/adr/0003-classification-driven-masking.md
+
+# Ordered from least to most sensitive.
+levels:
+  public:
+    description: Safe to publish.
+    unmasked_for: all
+  internal:
+    description: Business data, no personal information.
+    unmasked_for: all
+  confidential:
+    description: Personal data (GDPR personal data). Masked by default.
+    unmasked_for: [pii_readers, pii_restricted_readers]
+  restricted:
+    description: Highly sensitive (government IDs, payment cards). Masked or pseudonymized.
+    unmasked_for: [pii_restricted_readers]
+
+# Mask expressions receive the column value as `v` and must return the same type.
+mask_strategies:
+  partial_email:
+    data_type: STRING
+    expression: "regexp_replace(v, '^(.)[^@]*', '$1***')"
+  last4:
+    data_type: STRING
+    expression: "concat(repeat('*', greatest(length(v) - 4, 0)), right(v, 4))"
+  initial_only:
+    data_type: STRING
+    expression: "concat(left(v, 1), '.')"
+  redact:
+    data_type: STRING
+    expression: "'***REDACTED***'"
+  sha256:
+    data_type: STRING
+    expression: "sha2(v, 256)"
+  year_only:
+    data_type: DATE
+    expression: "make_date(year(v), 1, 1)"
+
+# Each PII type has a minimum classification level and a mask strategy.
+pii_types:
+  person_name:
+    classification: confidential
+    strategy: initial_only
+  email:
+    classification: confidential
+    strategy: partial_email
+  phone:
+    classification: confidential
+    strategy: last4
+  street_address:
+    classification: confidential
+    strategy: redact
+  date_of_birth:
+    classification: confidential
+    strategy: year_only
+  national_id:
+    classification: restricted
+    strategy: sha256   # pseudonymized: still joinable, not reversible
+  card_number:
+    classification: restricted
+    strategy: last4

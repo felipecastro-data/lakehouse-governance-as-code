@@ -1,0 +1,23 @@
+# Namespace layout. Schemas are <domain>_<layer>; see docs/adr/0001-environments-as-catalogs.md
+environments:
+  dev:
+    catalog: gov_dev
+  prod:
+    catalog: gov_prod
+
+domains:
+  customer:
+    description: Customer master data and addresses
+    steward: customer_stewards
+  sales:
+    description: Orders and payments
+    steward: sales_stewards
+
+layers:
+  - bronze
+  - silver
+  - gold
+
+shared_schemas:
+  - governance
+  - audit

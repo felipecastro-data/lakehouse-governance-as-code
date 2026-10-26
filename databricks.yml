@@ -1,0 +1,35 @@
+# Databricks Asset Bundle. The bundle owns infrastructure (schemas, jobs, dashboards);
+# gov_engine owns access policy (grants, tags, masks, row filters). See docs/adr/0002.
+#
+# Auth: set DATABRICKS_HOST + DATABRICKS_TOKEN, or use a CLI profile (`databricks auth login`).
+bundle:
+  name: lakehouse-governance
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for the target (must match governance/layout.yml).
+
+# No `mode:` on purpose: development mode prefixes schema names, which would break the
+# policy's schema selectors. Behaviour is set explicitly with presets instead.
+targets:
+  dev:
+    default: true
+    variables:
+      catalog: gov_dev
+    presets:
+      trigger_pause_status: PAUSED
+      tags:
+        environment: dev
+
+  prod:
+    variables:
+      catalog: gov_prod
+    workspace:
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/prod
+    presets:
+      trigger_pause_status: UNPAUSED
+      tags:
+        environment: prod

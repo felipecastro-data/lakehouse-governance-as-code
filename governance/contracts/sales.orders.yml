@@ -1,0 +1,54 @@
+# Open Data Contract Standard (ODCS) v3 — subset. Governance metadata lives in customProperties.
+apiVersion: v3.0.2
+kind: DataContract
+id: sales.orders
+name: orders
+version: 0.1.0
+status: draft
+domain: sales
+description:
+  purpose: One row per order with its payment method.
+customProperties:
+  - property: owner
+    value: sales_stewards
+schema:
+  - name: orders
+    physicalName: sales_silver.orders
+    physicalType: table
+    customProperties:
+      - property: rowFilter
+        value: region
+    properties:
+      - name: order_id
+        logicalType: string
+        primaryKey: true
+        required: true
+        classification: internal
+      - name: customer_id
+        logicalType: string
+        required: true
+        classification: internal
+      - name: order_ts
+        logicalType: timestamp
+        classification: internal
+      - name: amount
+        logicalType: number
+        classification: internal
+      - name: currency
+        logicalType: string
+        classification: internal
+      - name: card_number
+        logicalType: string
+        customProperties:
+          - property: piiType
+            value: card_number
+      - name: region
+        logicalType: string
+        required: true
+        classification: internal
+quality:
+  - rule: uniqueness
+    column: order_id
+  - rule: referentialIntegrity
+    column: customer_id
+    references: customer.customers.customer_id

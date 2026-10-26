@@ -1,0 +1,28 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Bundle target
+        type: choice
+        options: [dev, prod]
+        default: dev
+
+concurrency: deploy-${{ github.event.inputs.target || 'dev' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.target || 'dev' }}  # add required reviewers on `prod`
+    env:
+      TARGET: ${{ github.event.inputs.target || 'dev' }}
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main  # pin to a release tag once chosen
+      - run: databricks bundle deploy -t "$TARGET"
+      - run: databricks bundle run -t "$TARGET" governance_apply

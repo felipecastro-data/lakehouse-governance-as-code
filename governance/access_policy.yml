@@ -1,0 +1,75 @@
+# Who can access what. Privileges are granted to groups only.
+# Logical principal names are used everywhere; map them to real group names here.
+
+principals:
+  platform_admins: gov-platform-admins
+  data_engineers: gov-data-engineers
+  analysts_amer: gov-analysts-amer
+  analysts_emea: gov-analysts-emea
+  pii_readers: gov-pii-readers
+  pii_restricted_readers: gov-pii-restricted-readers
+  customer_stewards: gov-customer-stewards
+  sales_stewards: gov-sales-stewards
+  auditors: gov-auditors
+
+# Schema selectors: `layers`, `domains` (combined with AND) or explicit `names`.
+# `environments` defaults to all environments.
+grants:
+  - reason: Everyone in the program can see the catalog
+    principals: [platform_admins, data_engineers, analysts_amer, analysts_emea, pii_readers,
+                 pii_restricted_readers, customer_stewards, sales_stewards, auditors]
+    scope: catalog
+    privileges: [USE_CATALOG]
+
+  - reason: Platform admins operate everything (break-glass)
+    principals: [platform_admins]
+    scope: catalog
+    privileges: [USE_SCHEMA, SELECT, MODIFY, CREATE_TABLE, CREATE_FUNCTION, APPLY_TAG]
+
+  - reason: Engineers build pipelines in dev
+    principals: [data_engineers]
+    scope: {schemas: {layers: [bronze, silver, gold]}}
+    environments: [dev]
+    privileges: [USE_SCHEMA, SELECT, MODIFY, CREATE_TABLE]
+
+  - reason: Engineers are read-only in prod; only the deploy identity writes
+    principals: [data_engineers]
+    scope: {schemas: {layers: [bronze, silver, gold]}}
+    environments: [prod]
+    privileges: [USE_SCHEMA, SELECT]
+
+  - reason: Analysts consume gold data products only
+    principals: [analysts_amer, analysts_emea]
+    scope: {schemas: {layers: [gold]}}
+    privileges: [USE_SCHEMA, SELECT]
+
+  - reason: PII readers need curated layers to unmask
+    principals: [pii_readers, pii_restricted_readers]
+    scope: {schemas: {layers: [silver, gold]}}
+    privileges: [USE_SCHEMA, SELECT]
+
+  - reason: Customer stewards own and classify customer data
+    principals: [customer_stewards]
+    scope: {schemas: {domains: [customer], layers: [silver, gold]}}
+    privileges: [USE_SCHEMA, SELECT, APPLY_TAG]
+
+  - reason: Sales stewards own and classify sales data
+    principals: [sales_stewards]
+    scope: {schemas: {domains: [sales], layers: [silver, gold]}}
+    privileges: [USE_SCHEMA, SELECT, APPLY_TAG]
+
+  - reason: Auditors read curated audit views, never raw system tables
+    principals: [auditors]
+    scope: {schemas: {names: [audit]}}
+    privileges: [USE_SCHEMA, SELECT]
+
+# Row filters backed by a mapping table. See docs/adr/0004-row-filter-mapping-table.md
+row_filters:
+  region:
+    function: filter_region
+    column: region
+    bypass: [platform_admins, data_engineers, pii_restricted_readers, customer_stewards, sales_stewards]
+    mapping:
+      analysts_amer: [AMER]
+      analysts_emea: [EMEA]
+      pii_readers: [AMER, EMEA, APAC]

@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  policy:
+    name: Validate policy and test engine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests
+      - run: pytest -q
+      - run: python -m gov_engine validate
+      - name: Render plan and access matrix
+        run: |
+          mkdir -p plan
+          for env in dev prod; do
+            python -m gov_engine plan --env "$env" > "plan/$env.sql"
+            python -m gov_engine matrix --env "$env" > "plan/$env-access-matrix.md"
+          done
+          cat plan/prod-access-matrix.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: governance-plan
+          path: plan/
+
+  bundle:
+    name: Validate bundle
+    runs-on: ubuntu-latest
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main  # pin to a release tag once chosen
+        if: env.DATABRICKS_HOST != ''
+      - if: env.DATABRICKS_HOST != ''
+        run: |
+          databricks bundle validate -t dev
+          databricks bundle validate -t prod
+      - if: env.DATABRICKS_HOST == ''
+        run: echo "::notice::DATABRICKS_HOST secret not set - skipping bundle validation"

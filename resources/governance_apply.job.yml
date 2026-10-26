@@ -1,0 +1,18 @@
+resources:
+  jobs:
+    governance_apply:
+      name: governance-apply-${bundle.target}
+      description: Applies governance/*.yml to Unity Catalog (grants, tags, masks, row filters).
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: apply_policies
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/jobs/apply_policies.py
+            parameters: ["--env", "${bundle.target}", "--root", "${workspace.file_path}"]
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "2"
+            dependencies:
+              - pyyaml>=6

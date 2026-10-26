@@ -1,0 +1,71 @@
+# Open Data Contract Standard (ODCS) v3 — subset. Governance metadata lives in customProperties.
+apiVersion: v3.0.2
+kind: DataContract
+id: customer.customers
+name: customers
+version: 0.1.0
+status: draft
+domain: customer
+description:
+  purpose: Conformed customer master, one row per customer.
+customProperties:
+  - property: owner
+    value: customer_stewards
+schema:
+  - name: customers
+    physicalName: customer_silver.customers
+    physicalType: table
+    customProperties:
+      - property: rowFilter
+        value: region
+    properties:
+      - name: customer_id
+        logicalType: string
+        primaryKey: true
+        required: true
+        classification: internal
+      - name: full_name
+        logicalType: string
+        customProperties:
+          - property: piiType
+            value: person_name
+      - name: email
+        logicalType: string
+        customProperties:
+          - property: piiType
+            value: email
+      - name: phone
+        logicalType: string
+        customProperties:
+          - property: piiType
+            value: phone
+      - name: date_of_birth
+        logicalType: date
+        customProperties:
+          - property: piiType
+            value: date_of_birth
+      - name: national_id
+        logicalType: string
+        customProperties:
+          - property: piiType
+            value: national_id
+      - name: street_address
+        logicalType: string
+        customProperties:
+          - property: piiType
+            value: street_address
+      - name: country
+        logicalType: string
+        classification: internal
+      - name: region
+        logicalType: string
+        required: true
+        classification: internal
+      - name: created_at
+        logicalType: timestamp
+        classification: internal
+quality:
+  - rule: uniqueness
+    column: customer_id
+  - rule: notNull
+    column: region
