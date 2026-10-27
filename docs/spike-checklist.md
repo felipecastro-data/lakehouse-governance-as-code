@@ -29,6 +29,9 @@ Warehouse 2X-Small). Test SQL: [`scripts/spike.sql`](../scripts/spike.sql).
 - **Workspace admins get no data access to a catalog owned by the deploy SP**: after the first deploy
   the admin user gets `USE CATALOG` denied on `gov_dev`. Access comes only through `gov-*` groups
   (break-glass: `gov-platform-admins`).
+- **Account groups created through the SCIM proxy are not assigned to the workspace**: they work in grants
+  and policies but are missing from the workspace Groups page. `sync-groups` now also assigns them (`USER`).
+- **`CREATE CATALOG` adds a `default` schema** not in the layout; `ensure-catalog` drops it while empty.
 - **Tag policies can be updated in place** with `PATCH /api/2.1/tag-policies/{key}?update_mask=description,values`.
 
 ## Spike artifacts to clean up after item 8

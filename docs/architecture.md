@@ -75,7 +75,9 @@ Each object has exactly one owner so the two systems never overwrite each other 
 
 Group names live in `access_policy.yml → principals`; everything else refers to logical names.
 Groups are created as **account** groups through `/api/2.0/account/scim/v2/Groups`: the plain
-workspace SCIM API creates workspace-local groups that Unity Catalog cannot resolve.
+workspace SCIM API creates workspace-local groups that Unity Catalog cannot resolve. The engine then
+assigns each group to the workspace (`/api/2.0/preview/permissionassignments`), so it appears on the
+workspace Groups page and its members can sign in.
 
 Deployments run as the **`gov-deployer`** service principal (OAuth M2M), which owns prod objects
 ([ADR-0006](adr/0006-deploy-service-principal.md)).

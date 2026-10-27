@@ -4,6 +4,9 @@ On Free Edition (Default Storage) the catalogs REST API, which the bundle `catal
 fails with "Metastore storage root URL does not exist". SQL `CREATE CATALOG` works, so the catalog is
 created through the SQL Statement Execution API on a SQL warehouse instead. Schemas and jobs stay in
 the bundle. The catalog is owned by whoever runs this: `gov-deployer` in CI (ADR-0006).
+
+`CREATE CATALOG` also creates a `default` schema that is not in layout.yml. It is dropped while empty
+(no CASCADE), so it never shows up as drift; a non-empty `default` is left alone with a warning.
 """
 
 from __future__ import annotations
@@ -39,12 +42,22 @@ def run_statement(api: ApiCall, warehouse_id: str, sql: str, poll_seconds: float
 
 
 def ensure_catalog(spec: Spec, env: str, api: ApiCall, warehouse_id: str | None = None,
-                   dry_run: bool = False, log: Callable[[str], None] = print) -> str:
-    """CREATE CATALOG IF NOT EXISTS for env. Returns the SQL."""
+                   dry_run: bool = False, log: Callable[[str], None] = print) -> list[str]:
+    """CREATE CATALOG IF NOT EXISTS for env, then drop its empty `default` schema. Returns the SQL."""
     catalog = spec.layout.environments[env]
     comment = COMMENT.format(env=env).replace("'", "''")
-    sql = f"CREATE CATALOG IF NOT EXISTS {catalog} COMMENT '{comment}'"
-    if not dry_run:
-        run_statement(api, warehouse_id or pick_warehouse(api), sql)
-    log(f"[{'dry-run' if dry_run else 'ok'}] [catalog] {sql}")
-    return sql
+    statements = [f"CREATE CATALOG IF NOT EXISTS {catalog} COMMENT '{comment}'"]
+    if "default" not in spec.layout.all_schemas():
+        statements.append(f"DROP SCHEMA IF EXISTS {catalog}.default")
+    warehouse = None if dry_run else warehouse_id or pick_warehouse(api)
+    for sql in statements:
+        status = "dry-run" if dry_run else "ok"
+        if not dry_run:
+            try:
+                run_statement(api, warehouse, sql)
+            except RuntimeError as exc:
+                if not sql.startswith("DROP SCHEMA"):
+                    raise
+                status = f"warn: kept, not empty ({exc})"
+        log(f"[{status}] [catalog] {sql}")
+    return statements

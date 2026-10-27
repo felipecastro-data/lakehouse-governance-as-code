@@ -1,6 +1,6 @@
 """Tag policy and group sync against a fake Databricks API."""
 
-from gov_engine.identity import ACCOUNT_GROUPS, sync_groups
+from gov_engine.identity import ACCOUNT_GROUPS, ASSIGNMENTS, sync_groups
 from gov_engine.tag_policies import API, desired_tag_policies, sync_tag_policies
 
 
@@ -48,12 +48,21 @@ def test_dry_run_writes_nothing(spec):
     assert api.writes() == []
 
 
-def test_groups_are_created_through_the_account_api(spec):
-    api = FakeApi({("GET", ACCOUNT_GROUPS): {"totalResults": 1, "Resources": [{"displayName": "gov-auditors"}]}})
+def test_groups_are_created_through_the_account_api_and_assigned(spec):
+    api = FakeApi({
+        ("GET", ACCOUNT_GROUPS): {"totalResults": 1, "Resources": [{"displayName": "gov-auditors", "id": "7"}]},
+        ("POST", ACCOUNT_GROUPS): {"id": "42"},
+        ("GET", ASSIGNMENTS): {"permission_assignments": [{"principal": {"group_name": "gov-pii-readers"}}]},
+    })
     created = sync_groups(spec, api, log=lambda _: None)
-    assert "gov-auditors" not in created
-    assert len(created) == len(spec.access.principals) - 1
-    assert all(path == ACCOUNT_GROUPS for _, path in api.writes())
+    n = len(spec.access.principals)
+
+    assert "gov-auditors" not in created and len(created) == n - 1
+    writes = api.writes()
+    assert writes.count(("POST", ACCOUNT_GROUPS)) == n - 1
+    puts = [(p, b) for m, p, _, b in api.calls if m == "PUT"]
+    assert len(puts) == n - 1  # everything except the already assigned gov-pii-readers
+    assert (f"{ASSIGNMENTS}/principals/7", {"permissions": ["USER"]}) in puts
 
 
 def test_ensure_catalog_runs_sql_on_a_serverless_warehouse(spec):
@@ -63,8 +72,10 @@ def test_ensure_catalog_runs_sql_on_a_serverless_warehouse(spec):
         ("GET", WAREHOUSES): {"warehouses": [{"id": "classic"}, {"id": "sls", "enable_serverless_compute": True}]},
         ("POST", STATEMENTS): {"statement_id": "1", "status": {"state": "SUCCEEDED"}},
     })
-    sql = ensure_catalog(spec, "dev", api, log=lambda _: None)
+    create, drop = ensure_catalog(spec, "dev", api, log=lambda _: None)
 
-    assert sql.startswith("CREATE CATALOG IF NOT EXISTS gov_dev COMMENT")
-    (_, _, _, body), = [c for c in api.calls if c[0] == "POST"]
-    assert body["warehouse_id"] == "sls" and body["statement"] == sql
+    assert create.startswith("CREATE CATALOG IF NOT EXISTS gov_dev COMMENT")
+    assert drop == "DROP SCHEMA IF EXISTS gov_dev.default"  # no CASCADE: only dropped while empty
+    bodies = [b for m, _, _, b in api.calls if m == "POST"]
+    assert [b["statement"] for b in bodies] == [create, drop]
+    assert all(b["warehouse_id"] == "sls" for b in bodies)
