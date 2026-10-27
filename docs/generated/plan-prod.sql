@@ -77,6 +77,41 @@ GRANT USE SCHEMA, SELECT ON SCHEMA gov_prod.sales_silver TO `gov-pii-readers`;
 GRANT USE SCHEMA, SELECT ON SCHEMA gov_prod.sales_silver TO `gov-pii-restricted-readers`;
 GRANT USE SCHEMA, SELECT, APPLY TAG ON SCHEMA gov_prod.sales_silver TO `gov-sales-stewards`;
 
+-- ===== tables =====
+CREATE TABLE IF NOT EXISTS gov_prod.customer_gold.customer_360 (
+  `customer_id` STRING NOT NULL,
+  `full_name` STRING,
+  `email` STRING,
+  `region` STRING NOT NULL,
+  `order_count` BIGINT,
+  `lifetime_value` DECIMAL(18,2),
+  `last_order_ts` TIMESTAMP,
+  CONSTRAINT customer_360_pk PRIMARY KEY (`customer_id`)
+) COMMENT 'Gold data product — customer profile with order KPIs, for analysts. Contract customer.customer_360.';
+CREATE TABLE IF NOT EXISTS gov_prod.customer_silver.customers (
+  `customer_id` STRING NOT NULL,
+  `full_name` STRING,
+  `email` STRING,
+  `phone` STRING,
+  `date_of_birth` DATE,
+  `national_id` STRING,
+  `street_address` STRING,
+  `country` STRING,
+  `region` STRING NOT NULL,
+  `created_at` TIMESTAMP,
+  CONSTRAINT customers_pk PRIMARY KEY (`customer_id`)
+) COMMENT 'Conformed customer master, one row per customer. Contract customer.customers.';
+CREATE TABLE IF NOT EXISTS gov_prod.sales_silver.orders (
+  `order_id` STRING NOT NULL,
+  `customer_id` STRING NOT NULL,
+  `order_ts` TIMESTAMP,
+  `amount` DECIMAL(18,2),
+  `currency` STRING,
+  `card_number` STRING,
+  `region` STRING NOT NULL,
+  CONSTRAINT orders_pk PRIMARY KEY (`order_id`)
+) COMMENT 'One row per order with its payment method. Contract sales.orders.';
+
 -- ===== tags =====
 ALTER TABLE gov_prod.customer_gold.customer_360 SET TAGS ('classification' = 'confidential', 'domain' = 'customer', 'layer' = 'gold', 'owner' = 'gov-customer-stewards', 'data_contract' = 'customer.customer_360');
 ALTER TABLE gov_prod.customer_gold.customer_360 ALTER COLUMN `customer_id` SET TAGS ('classification' = 'internal');
@@ -110,56 +145,56 @@ ALTER TABLE gov_prod.sales_silver.orders ALTER COLUMN `region` SET TAGS ('classi
 CREATE OR REPLACE POLICY mask_person_name ON CATALOG gov_prod
 COMMENT 'Mask person_name (confidential). Managed by gov_engine - do not edit by hand'
 COLUMN MASK gov_prod.governance.mask_person_name
-TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`
+TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`, `gov-pipeline-runners`
 FOR TABLES
 MATCH COLUMNS has_tag_value('pii_type', 'person_name') OR has_tag('class.name') AS col
 ON COLUMN col;
 CREATE OR REPLACE POLICY mask_email ON CATALOG gov_prod
 COMMENT 'Mask email (confidential). Managed by gov_engine - do not edit by hand'
 COLUMN MASK gov_prod.governance.mask_email
-TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`
+TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`, `gov-pipeline-runners`
 FOR TABLES
 MATCH COLUMNS has_tag_value('pii_type', 'email') OR has_tag('class.email_address') AS col
 ON COLUMN col;
 CREATE OR REPLACE POLICY mask_phone ON CATALOG gov_prod
 COMMENT 'Mask phone (confidential). Managed by gov_engine - do not edit by hand'
 COLUMN MASK gov_prod.governance.mask_phone
-TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`
+TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`, `gov-pipeline-runners`
 FOR TABLES
 MATCH COLUMNS has_tag_value('pii_type', 'phone') OR has_tag('class.phone_number') AS col
 ON COLUMN col;
 CREATE OR REPLACE POLICY mask_street_address ON CATALOG gov_prod
 COMMENT 'Mask street_address (confidential). Managed by gov_engine - do not edit by hand'
 COLUMN MASK gov_prod.governance.mask_street_address
-TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`
+TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`, `gov-pipeline-runners`
 FOR TABLES
 MATCH COLUMNS has_tag_value('pii_type', 'street_address') OR has_tag('class.street_address') OR has_tag('class.location') AS col
 ON COLUMN col;
 CREATE OR REPLACE POLICY mask_date_of_birth ON CATALOG gov_prod
 COMMENT 'Mask date_of_birth (confidential). Managed by gov_engine - do not edit by hand'
 COLUMN MASK gov_prod.governance.mask_date_of_birth
-TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`
+TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`, `gov-pipeline-runners`
 FOR TABLES
 MATCH COLUMNS has_tag_value('pii_type', 'date_of_birth') AS col
 ON COLUMN col;
 CREATE OR REPLACE POLICY mask_national_id ON CATALOG gov_prod
 COMMENT 'Mask national_id (restricted). Managed by gov_engine - do not edit by hand'
 COLUMN MASK gov_prod.governance.mask_national_id
-TO `account users` EXCEPT `gov-pii-restricted-readers`
+TO `account users` EXCEPT `gov-pii-restricted-readers`, `gov-pipeline-runners`
 FOR TABLES
 MATCH COLUMNS has_tag_value('pii_type', 'national_id') OR has_tag('class.us_ssn') OR has_tag('class.passport') OR has_tag('class.driver_license') AS col
 ON COLUMN col;
 CREATE OR REPLACE POLICY mask_card_number ON CATALOG gov_prod
 COMMENT 'Mask card_number (restricted). Managed by gov_engine - do not edit by hand'
 COLUMN MASK gov_prod.governance.mask_card_number
-TO `account users` EXCEPT `gov-pii-restricted-readers`
+TO `account users` EXCEPT `gov-pii-restricted-readers`, `gov-pipeline-runners`
 FOR TABLES
 MATCH COLUMNS has_tag_value('pii_type', 'card_number') OR has_tag('class.credit_card') AS col
 ON COLUMN col;
 CREATE OR REPLACE POLICY filter_region ON CATALOG gov_prod
 COMMENT 'Row filter on filter_key=region. Managed by gov_engine - do not edit by hand'
 ROW FILTER gov_prod.governance.filter_region
-TO `account users` EXCEPT `gov-platform-admins`, `gov-data-engineers`, `gov-pii-restricted-readers`, `gov-customer-stewards`, `gov-sales-stewards`
+TO `account users` EXCEPT `gov-platform-admins`, `gov-data-engineers`, `gov-pii-restricted-readers`, `gov-customer-stewards`, `gov-sales-stewards`, `gov-pipeline-runners`
 FOR TABLES
 MATCH COLUMNS has_tag_value('filter_key', 'region') AS col
 USING COLUMNS (col);

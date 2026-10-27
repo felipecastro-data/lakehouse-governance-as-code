@@ -12,10 +12,10 @@ levels:
     unmasked_for: all
   confidential:
     description: Personal data (GDPR personal data). Masked by default.
-    unmasked_for: [pii_readers, pii_restricted_readers]   # rendered as the policy's EXCEPT clause
+    unmasked_for: [pii_readers, pii_restricted_readers, pipelines]   # rendered as the policy's EXCEPT clause
   restricted:
     description: Highly sensitive (government IDs, payment cards). Masked or pseudonymized.
-    unmasked_for: [pii_restricted_readers]
+    unmasked_for: [pii_restricted_readers, pipelines]
 
 # Mask expressions receive the column value as `v` and must return the same type.
 mask_strategies:

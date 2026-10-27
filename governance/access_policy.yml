@@ -11,6 +11,10 @@ principals:
   customer_stewards: gov-customer-stewards
   sales_stewards: gov-sales-stewards
   auditors: gov-auditors
+  # Service identity that runs the lakehouse pipeline. Its only member is the gov-deployer service
+  # principal, added by a human (docs/adr/0007). Exempt from masks and row filters so silver and gold
+  # are built from clear data; it has no grants of its own (the deployer owns the objects).
+  pipelines: gov-pipeline-runners
 
 # Schema selectors: `layers`, `domains` (combined with AND) or explicit `names`.
 # `environments` defaults to all environments.
@@ -68,7 +72,7 @@ row_filters:
   region:
     function: filter_region
     column: region
-    bypass: [platform_admins, data_engineers, pii_restricted_readers, customer_stewards, sales_stewards]
+    bypass: [platform_admins, data_engineers, pii_restricted_readers, customer_stewards, sales_stewards, pipelines]
     mapping:
       analysts_amer: [AMER]
       analysts_emea: [EMEA]

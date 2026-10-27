@@ -1,0 +1,58 @@
+# Synthetic data -> bronze -> silver -> gold, then the contracts' quality rules.
+# Runs as the deployer (gov-deployer), a member of gov-pipeline-runners, which the ABAC policies
+# exempt so silver and gold are built from clear data (docs/adr/0007).
+resources:
+  jobs:
+    lakehouse_pipeline:
+      name: lakehouse-pipeline-${bundle.target}
+      description: Builds the governed lakehouse. Governance is applied first, so every contract table exists and is tagged before data lands.
+      max_concurrent_runs: 1
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: UTC
+      tasks:
+        - task_key: governance
+          run_job_task:
+            job_id: ${resources.jobs.governance_apply.id}
+
+        - task_key: bronze
+          depends_on: [{task_key: governance}]
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/jobs/generate_bronze.py
+            parameters: ["--catalog", "${var.catalog}"]
+
+        - task_key: silver_customers
+          depends_on: [{task_key: bronze}]
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/jobs/run_sql.py
+            parameters: ["--catalog", "${var.catalog}", "--file", "${workspace.file_path}/src/transforms/customer_silver/customers.sql"]
+
+        - task_key: silver_orders
+          depends_on: [{task_key: silver_customers}]
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/jobs/run_sql.py
+            parameters: ["--catalog", "${var.catalog}", "--file", "${workspace.file_path}/src/transforms/sales_silver/orders.sql"]
+
+        - task_key: gold_customer_360
+          depends_on: [{task_key: silver_orders}]
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/jobs/run_sql.py
+            parameters: ["--catalog", "${var.catalog}", "--file", "${workspace.file_path}/src/transforms/customer_gold/customer_360.sql"]
+
+        - task_key: quality
+          depends_on: [{task_key: gold_customer_360}]
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/jobs/check_quality.py
+            parameters: ["--env", "${bundle.target}", "--root", "${workspace.file_path}"]
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "2"
+            dependencies:
+              - pyyaml>=6

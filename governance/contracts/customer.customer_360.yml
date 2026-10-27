@@ -48,6 +48,12 @@ schema:
       - name: last_order_ts
         logicalType: timestamp
         classification: internal
+quality:
+  - rule: uniqueness
+    column: customer_id
+  - rule: referentialIntegrity
+    column: customer_id
+    references: customer.customers.customer_id
 slaProperties:
   - property: frequency
     value: daily

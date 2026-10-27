@@ -116,7 +116,7 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
 - [x] **Phase 1a — Scaffold**: repo, spec files, engine (validate/plan/matrix), bundle skeleton, CI, docs, ADRs.
 - [x] **Phase 1a+ — ABAC redesign**: governed tags, catalog ABAC policies, account-group sync, OAuth deploy SP.
 - [x] **Phase 1b — Foundation**: deploy as `gov-deployer`, sync groups + governed tags, apply grants and policies (dev: 50 applied, 27 table tags waiting for Phase 2 tables, 0 failed).
-- [ ] **Phase 2 — Data**: synthetic generator, bronze → silver → gold jobs.
+- [x] **Phase 2 — Data**: synthetic generator, contract-first tables, bronze → silver → gold job, contract quality checks ([ADR-0007](adr/0007-contract-first-tables-and-pipeline-identity.md)).
 - [ ] **Phase 3 — Protection & verification**: apply masks/filters/tags, drift detection, PII propagation check.
 - [ ] **Phase 4 — Observability**: audit + lineage views, governance scorecard dashboard.
 - [ ] **Phase 5 — Privacy & polish**: right-to-erasure, `make demo`, README screenshots, deploy workflow.
@@ -126,6 +126,8 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
 | Decision | Choice |
 |---|---|
 | Data domain | Retail: `customer` and `sales` domains |
+| Table creation | From contracts, before data lands ([ADR-0007](adr/0007-contract-first-tables-and-pipeline-identity.md)) |
+| Pipeline identity | `gov-deployer` in exempt group `gov-pipeline-runners` (ADR-0007) |
 | Environments | Two: `dev`, `prod` |
 | Contract format | ODCS v3 (subset + `customProperties`) |
 | Policy engine language | Python, `pyyaml` only (runs locally and on serverless) |

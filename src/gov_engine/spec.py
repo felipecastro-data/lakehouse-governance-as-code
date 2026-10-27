@@ -21,6 +21,8 @@ LOGICAL_TO_SQL = {
     "number": "DECIMAL", "boolean": "BOOLEAN",
 }
 
+QUALITY_RULES = ("uniqueness", "notNull", "referentialIntegrity")
+
 _IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]*$")
 _TAG_VALUE = re.compile(r"^[A-Za-z0-9_.\- ]+$")
 _SYSTEM_TAG = re.compile(r"^class\.[a-z0-9_]+$")
@@ -130,6 +132,15 @@ class Column:
     logical_type: str
     classification: str | None
     pii_type: str | None
+    required: bool = False
+    primary_key: bool = False
+
+
+@dataclass(frozen=True)
+class QualityRule:
+    rule: str
+    column: str
+    references: str | None = None  # "<contract id>.<column>", for referentialIntegrity
 
 
 @dataclass(frozen=True)
@@ -141,6 +152,8 @@ class Table:
     owner: str
     row_filter: str | None
     columns: tuple[Column, ...]
+    description: str = ""
+    quality: tuple[QualityRule, ...] = ()
 
     @property
     def layer(self) -> str:
@@ -285,12 +298,19 @@ def _load_contract(raw: dict[str, Any]) -> list[Table]:
                 logical_type=p.get("logicalType", "string"),
                 classification=p.get("classification"),
                 pii_type=_custom(p.get("customProperties")).get("piiType"),
+                required=bool(p.get("required") or p.get("primaryKey")),
+                primary_key=bool(p.get("primaryKey")),
             )
             for p in obj.get("properties", [])
         )
         tables.append(Table(
             contract_id=raw["id"], schema=schema, name=name, domain=raw.get("domain", ""),
             owner=owner, row_filter=props.get("rowFilter"), columns=columns,
+            description=(raw.get("description") or {}).get("purpose", ""),
+            quality=tuple(
+                QualityRule(rule=q["rule"], column=q["column"], references=q.get("references"))
+                for q in raw.get("quality", [])
+            ),
         ))
     return tables
 
@@ -376,6 +396,7 @@ def validate(spec: Spec) -> list[str]:
             errors += [f"{where}: invalid value {v!r}" for v in values if not _TAG_VALUE.match(v)]
 
     seen: set[str] = set()
+    by_contract = {t.contract_id: t for t in spec.tables}
     domain_schemas = {s for s, _, _ in layout.domain_schemas()}
     for t in spec.tables:
         where = f"contract {t.contract_id} ({t.schema}.{t.name})"
@@ -398,6 +419,17 @@ def validate(spec: Spec) -> list[str]:
                 errors.append(f"{where}: unknown row filter {t.row_filter!r}")
             elif rf.column not in column_names:
                 errors.append(f"{where}: row filter {rf.name!r} needs column {rf.column!r}")
+        for q in t.quality:
+            qw = f"{where}: quality {q.rule}({q.column})"
+            if q.rule not in QUALITY_RULES:
+                errors.append(f"{qw}: unknown rule; expected one of {QUALITY_RULES}")
+            if q.column not in column_names:
+                errors.append(f"{qw}: unknown column")
+            if q.rule == "referentialIntegrity":
+                ref_contract, _, ref_column = (q.references or "").rpartition(".")
+                ref = by_contract.get(ref_contract)
+                if ref is None or ref_column not in {c.name for c in ref.columns}:
+                    errors.append(f"{qw}: references {q.references!r} is not <contract id>.<column>")
         for c in t.columns:
             cw = f"{where}.{c.name}"
             if c.logical_type not in LOGICAL_TO_SQL:

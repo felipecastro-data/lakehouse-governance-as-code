@@ -83,3 +83,17 @@ def test_all_errors_reported_at_once(spec_copy):
 def test_system_tags_must_be_class_tags(spec_copy):
     _edit(spec_copy, "classification.yml", lambda d: d["pii_types"]["email"].update(system_tags=["pii_email"]))
     assert "'pii_email' is not a `class.*` system tag" in _errors(spec_copy)
+
+
+def test_contract_quality_rules_are_validated(spec_copy):
+    def break_rules(d):
+        d["quality"] = [
+            {"rule": "isFresh", "column": "order_id"},
+            {"rule": "uniqueness", "column": "nope"},
+            {"rule": "referentialIntegrity", "column": "customer_id", "references": "customer.ghosts.id"},
+        ]
+    _edit(spec_copy, "contracts/sales.orders.yml", break_rules)
+    errors = _errors(spec_copy)
+    assert "quality isFresh(order_id): unknown rule" in errors
+    assert "quality uniqueness(nope): unknown column" in errors
+    assert "references 'customer.ghosts.id' is not <contract id>.<column>" in errors

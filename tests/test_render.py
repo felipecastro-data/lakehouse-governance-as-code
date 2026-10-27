@@ -26,7 +26,14 @@ def test_one_mask_policy_per_pii_type_exempts_unmask_groups(spec):
     assert "TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`" in email
     assert "MATCH COLUMNS has_tag_value('pii_type', 'email') OR has_tag('class.email_address') AS col" in email
     card = next(p for p in policies if "POLICY mask_card_number" in p)
-    assert "EXCEPT `gov-pii-restricted-readers`\n" in card
+    assert "EXCEPT `gov-pii-restricted-readers`, `gov-pipeline-runners`\n" in card
+
+
+def test_pipeline_identity_is_exempt_from_every_policy(spec):
+    """Otherwise silver and gold would be built from masked, region-filtered data (ADR-0007)."""
+    policies = _sql(spec, "prod", "policies")
+    assert policies and all("`gov-pipeline-runners`" in p.split("EXCEPT", 1)[1].splitlines()[0] for p in policies)
+    assert not any(who == "pipelines" for (_, who) in expand_grants(spec, "prod")), "exemption only, no grants"
 
 
 def test_row_filter_policy_matches_filter_key_and_bypasses(spec):
@@ -93,3 +100,28 @@ def test_access_matrix_lists_every_principal(spec):
     matrix = render_access_matrix(spec, "prod")
     for principal in spec.access.principals:
         assert f"`{principal}`" in matrix
+
+
+def test_contract_tables_are_created_before_tags_and_policies(spec):
+    phases = [s.phase for s in render_plan(spec, "dev")]
+    assert phases.index("grants") < phases.index("tables") < phases.index("tags")
+    assert all(s.target is None for s in render_plan(spec, "dev", ("tables",)))
+
+
+def test_contract_ddl_has_types_not_null_and_primary_key(spec):
+    orders = next(s for s in _sql(spec, "prod", "tables") if "sales_silver.orders" in s.splitlines()[0])
+    assert orders.startswith("CREATE TABLE IF NOT EXISTS gov_prod.sales_silver.orders (")
+    assert "`order_id` STRING NOT NULL," in orders
+    assert "`amount` DECIMAL(18,2)," in orders
+    assert "`card_number` STRING," in orders
+    assert "CONSTRAINT orders_pk PRIMARY KEY (`order_id`)" in orders
+    assert "Contract sales.orders." in orders
+
+
+def test_quality_checks_come_from_contracts(spec):
+    from gov_engine.quality import render_checks
+
+    checks = {c.name: c.sql for c in render_checks(spec, "prod")}
+    assert "HAVING count(*) > 1" in checks["sales_silver.orders: uniqueness(order_id)"]
+    ri = checks["sales_silver.orders: referentialIntegrity(customer_id)"]
+    assert "LEFT ANTI JOIN gov_prod.customer_silver.customers r ON t.`customer_id` = r.`customer_id`" in ri

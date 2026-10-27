@@ -7,6 +7,7 @@ deliberate trade-offs, not gaps in understanding.
 |---|---|---|
 | Environment isolation | Catalog per env in one workspace | Workspace per env + **workspace-catalog binding** so prod data is unreachable from dev |
 | Identity | Engine creates account groups via the workspace SCIM proxy | SCIM from the IdP (Entra ID / Okta), SSO, no local users; engine only checks groups exist |
+| Pipeline identity | `gov-deployer` runs the pipeline, exempted from policies via `gov-pipeline-runners` | Separate pipeline service principal per environment, distinct from the deployer |
 | Deployment identity | One `gov-deployer` service principal (OAuth M2M), workspace admin | One service principal per environment with least privilege: `CREATE CATALOG`, `MANAGE` on its tag policies, no workspace admin |
 | Storage | Default managed storage | Managed locations per catalog on dedicated storage accounts; external locations with storage credentials |
 | Encryption | Platform-managed keys | Customer-managed keys for managed services and storage |

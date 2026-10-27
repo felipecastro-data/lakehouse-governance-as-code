@@ -20,8 +20,15 @@ TAG_CLASSIFICATION = "classification"
 TAG_PII_TYPE = "pii_type"
 TAG_FILTER_KEY = "filter_key"
 
-# Order matters: row filter functions read the mapping tables, and policies need the functions.
-PHASES = ("reference_data", "functions", "grants", "tags", "policies")
+# ODCS logicalType -> column type in contract-created tables.
+DDL_TYPES = {
+    "string": "STRING", "date": "DATE", "timestamp": "TIMESTAMP", "integer": "BIGINT",
+    "number": "DECIMAL(18,2)", "boolean": "BOOLEAN",
+}
+
+# Order matters: row filter functions read the mapping tables, policies need the functions, and
+# contract tables exist (tagged) before policies and before the pipeline writes the first row.
+PHASES = ("reference_data", "functions", "grants", "tables", "tags", "policies")
 
 
 @dataclass(frozen=True)
@@ -137,6 +144,27 @@ def render_grants(spec: Spec, env: str) -> list[Statement]:
     ]
 
 
+def render_tables(spec: Spec, env: str) -> list[Statement]:
+    """Contract-first tables: the contract is the DDL. `IF NOT EXISTS`, so a changed contract on an
+    existing table is drift (Phase 3), never a silent rewrite of data."""
+    catalog = spec.catalog(env)
+    stmts = []
+    for t in spec.tables:
+        cols = [
+            f"  {_ident(c.name)} {DDL_TYPES[c.logical_type]}" + (" NOT NULL" if c.required else "")
+            for c in t.columns
+        ]
+        if pk := [_ident(c.name) for c in t.columns if c.primary_key]:
+            cols.append(f"  CONSTRAINT {t.name}_pk PRIMARY KEY ({', '.join(pk)})")
+        comment = f"{t.description} Contract {t.contract_id}." if t.description else f"Contract {t.contract_id}."
+        stmts.append(Statement("tables", "\n".join([
+            f"CREATE TABLE IF NOT EXISTS {catalog}.{t.schema}.{t.name} (",
+            ",\n".join(cols),
+            f") COMMENT {_lit(comment)}",
+        ])))
+    return stmts
+
+
 def _tags(pairs: dict[str, str]) -> str:
     return ", ".join(f"{_lit(k)} = {_lit(v)}" for k, v in pairs.items())
 
@@ -218,6 +246,7 @@ def render_plan(spec: Spec, env: str, phases: tuple[str, ...] = PHASES) -> list[
         *render_reference_data(spec, env),
         *render_functions(spec, env),
         *render_grants(spec, env),
+        *render_tables(spec, env),
         *render_tags(spec, env),
         *render_policies(spec, env),
     ]

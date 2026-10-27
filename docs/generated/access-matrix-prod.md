@@ -9,3 +9,4 @@
 | `customer_stewards` | USE CATALOG | – | – | USE SCHEMA, SELECT, APPLY TAG | USE SCHEMA, SELECT, APPLY TAG | – | – | – |
 | `sales_stewards` | USE CATALOG | – | – | – | – | – | USE SCHEMA, SELECT, APPLY TAG | USE SCHEMA, SELECT, APPLY TAG |
 | `auditors` | USE CATALOG | USE SCHEMA, SELECT | – | – | – | – | – | – |
+| `pipelines` | – | – | – | – | – | – | – | – |

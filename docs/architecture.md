@@ -72,6 +72,7 @@ Each object has exactly one owner so the two systems never overwrite each other 
 | `pii_restricted_readers` | `gov-pii-restricted-readers` | Unmasks **restricted** columns |
 | `customer_stewards` / `sales_stewards` | `gov-*-stewards` | Domain owners; can apply tags |
 | `auditors` | `gov-auditors` | Read `audit` schema only |
+| `pipelines` | `gov-pipeline-runners` | Exempt from masks and row filters, no grants; only member: `gov-deployer` ([ADR-0007](adr/0007-contract-first-tables-and-pipeline-identity.md)) |
 
 Group names live in `access_policy.yml → principals`; everything else refers to logical names.
 Groups are created as **account** groups through `/api/2.0/account/scim/v2/Groups`: the plain
@@ -106,6 +107,18 @@ decide whether they are in `TO` or `EXCEPT`. Contracts only tag columns, so a ne
 as soon as it is tagged ([ADR-0005](adr/0005-native-abac.md)).
 
 ## Data flow
+
+```mermaid
+flowchart LR
+    G[governance task<br/>contract tables created + tagged] --> B[bronze<br/>synthetic raw data]
+    B --> S1[silver customers<br/>dedupe, normalize, region]
+    S1 --> S2[silver orders<br/>dedupe, drop test + orphans]
+    S2 --> GD[gold customer_360]
+    GD --> Q[quality<br/>contract rules]
+```
+
+The `lakehouse_pipeline` job runs as `gov-deployer`. Contract tables exist and are tagged before the
+first row is written; transforms live in `src/transforms/<schema>/<table>.sql`.
 
 `bronze` (raw, engineers only) → `silver` (cleaned, conformed, masked + filtered) → `gold`
 (data products with contracts, masked + filtered). Bronze is protected by access, not masks.
