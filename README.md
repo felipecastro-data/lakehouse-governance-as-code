@@ -109,7 +109,7 @@ same commands run as the `gov-deployer` service principal ([ADR-0006](docs/adr/0
 |---|---|---|
 | 0 | Free Edition capability spike | ✅ |
 | 1a | Scaffold: spec, engine, bundle, CI, docs; redesign on native ABAC | ✅ |
-| 1b | Deploy as `gov-deployer`, sync groups + governed tags, apply grants and policies | ⏳ |
+| 1b | Deploy as `gov-deployer`, sync groups + governed tags, apply grants and policies | ✅ dev |
 | 2 | Synthetic data, bronze → silver → gold | ⏳ |
 | 3 | Policies live on data, drift detection, PII propagation | ⏳ |
 | 4 | Audit + lineage views, scorecard dashboard | ⏳ |

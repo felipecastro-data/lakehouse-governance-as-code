@@ -115,7 +115,7 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
 - [x] **Phase 0 — Spike**: verify Free Edition capabilities (items 2, 8, 9, 12 carried into later phases).
 - [x] **Phase 1a — Scaffold**: repo, spec files, engine (validate/plan/matrix), bundle skeleton, CI, docs, ADRs.
 - [x] **Phase 1a+ — ABAC redesign**: governed tags, catalog ABAC policies, account-group sync, OAuth deploy SP.
-- [ ] **Phase 1b — Foundation**: deploy as `gov-deployer`, sync groups + governed tags, apply grants and policies.
+- [x] **Phase 1b — Foundation**: deploy as `gov-deployer`, sync groups + governed tags, apply grants and policies (dev: 50 applied, 27 table tags waiting for Phase 2 tables, 0 failed).
 - [ ] **Phase 2 — Data**: synthetic generator, bronze → silver → gold jobs.
 - [ ] **Phase 3 — Protection & verification**: apply masks/filters/tags, drift detection, PII propagation check.
 - [ ] **Phase 4 — Observability**: audit + lineage views, governance scorecard dashboard.

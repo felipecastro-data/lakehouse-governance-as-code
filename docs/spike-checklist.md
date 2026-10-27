@@ -26,6 +26,9 @@ Warehouse 2X-Small). Test SQL: [`scripts/spike.sql`](../scripts/spike.sql).
 - **`databricks groups create` makes workspace-local groups** that Unity Catalog cannot see. Account groups are
   created through the workspace proxy `/api/2.0/account/scim/v2/Groups` → `gov_engine sync-groups`.
 - **Service principals created in the workspace are account-level** (visible in the account SCIM proxy).
+- **Workspace admins get no data access to a catalog owned by the deploy SP**: after the first deploy
+  the admin user gets `USE CATALOG` denied on `gov_dev`. Access comes only through `gov-*` groups
+  (break-glass: `gov-platform-admins`).
 - **Tag policies can be updated in place** with `PATCH /api/2.1/tag-policies/{key}?update_mask=description,values`.
 
 ## Spike artifacts to clean up after item 8
