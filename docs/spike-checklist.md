@@ -15,7 +15,7 @@ Warehouse 2X-Small). Test SQL: [`scripts/spike.sql`](../scripts/spike.sql).
 | 8 | Do readers need `EXECUTE` on mask/filter functions? | ⏳ Needs a second user (item 2) | Grant `EXECUTE` on `governance` if required |
 | 9 | PyPI reachable from serverless jobs? | ⏳ Phase 2 (data generator) | Fallback: stdlib / SQL generation |
 | 10 | ABAC policies / governed tags? | ✅ **Available.** 100+ system `class.*` governed tags; custom governed tag created via `/api/2.1/tag-policies`; `CREATE POLICY ... COLUMN MASK ... MATCH COLUMNS has_tag_value(...)` masked the column. New tag policies take ~1 min to propagate | Revisit ADR-0003: native ABAC instead of per-column `SET MASK` |
-| 11 | Bundle `catalogs` resource supported? | ✅ `bundle validate` accepts it (CLI v1.22.1); project bundle validates for `dev` | Catalogs can move into the bundle |
+| 11 | Bundle `catalogs` resource supported? | ❌ `bundle validate` accepts it, but **deploy fails**: the catalogs REST API returns "Metastore storage root URL does not exist" on Default Storage. SQL `CREATE CATALOG` works | Catalog created by `gov_engine ensure-catalog` (SQL) before `bundle deploy` |
 | 12 | Quota / concurrency limits | ⏳ Observe during Phase 2 | Size data and schedules accordingly |
 
 ## Follow-up findings (2026-10-27, during the ABAC redesign)

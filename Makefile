@@ -3,7 +3,7 @@ PY  ?= .venv/bin/python
 # Don't rely on the editable-install .pth (macOS can flag it hidden, and Python 3.13+ skips hidden .pth files).
 export PYTHONPATH := src
 
-.PHONY: setup lint test validate plan matrix docs groups tags bundle-validate deploy apply
+.PHONY: setup lint test validate plan matrix docs groups tags catalog bundle-validate deploy apply
 
 setup:            ## create .venv and install dev dependencies
 	python3 -m venv .venv && $(PY) -m pip install -q -e ".[dev]"
@@ -33,10 +33,13 @@ groups:           ## create missing account groups (needs `databricks auth login
 tags:             ## create/update governed tags (needs `databricks auth login`)
 	$(PY) -m gov_engine sync-tags
 
+catalog:          ## create the ENV catalog via SQL (Default Storage rejects the bundle catalogs API)
+	$(PY) -m gov_engine ensure-catalog --env $(ENV)
+
 bundle-validate:
 	databricks bundle validate -t $(ENV)
 
-deploy:           ## deploy bundle to ENV
+deploy: catalog   ## create the catalog, then deploy the bundle to ENV
 	databricks bundle deploy -t $(ENV)
 
 apply: deploy     ## deploy, then apply governance policy in ENV

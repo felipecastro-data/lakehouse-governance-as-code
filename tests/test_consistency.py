@@ -11,14 +11,14 @@ def test_bundle_schemas_match_layout(spec):
     bundle = yaml.safe_load((ROOT / "resources" / "schemas.yml").read_text())
     schemas = bundle["resources"]["schemas"]
     assert {s["name"] for s in schemas.values()} == set(spec.layout.all_schemas())
-    assert all(s["catalog_name"] == "${resources.catalogs.lakehouse.name}" for s in schemas.values())
+    assert all(s["catalog_name"] == "${var.catalog}" for s in schemas.values())
     assert all("grants" not in s for s in schemas.values()), "grants belong to gov_engine (ADR-0002)"
 
 
-def test_bundle_owns_the_catalog_without_grants():
-    catalog = yaml.safe_load((ROOT / "resources" / "catalog.yml").read_text())["resources"]["catalogs"]["lakehouse"]
-    assert catalog["name"] == "${var.catalog}"
-    assert "grants" not in catalog
+def test_bundle_does_not_manage_the_catalog():
+    """Default Storage rejects the catalogs API; gov_engine ensure-catalog creates it with SQL."""
+    for path in (ROOT / "resources").glob("*.yml"):
+        assert "catalogs" not in (yaml.safe_load(path.read_text()).get("resources") or {}), path.name
 
 
 def test_bundle_targets_match_environments(spec):

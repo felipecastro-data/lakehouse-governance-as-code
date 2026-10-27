@@ -54,3 +54,17 @@ def test_groups_are_created_through_the_account_api(spec):
     assert "gov-auditors" not in created
     assert len(created) == len(spec.access.principals) - 1
     assert all(path == ACCOUNT_GROUPS for _, path in api.writes())
+
+
+def test_ensure_catalog_runs_sql_on_a_serverless_warehouse(spec):
+    from gov_engine.catalog import STATEMENTS, WAREHOUSES, ensure_catalog
+
+    api = FakeApi({
+        ("GET", WAREHOUSES): {"warehouses": [{"id": "classic"}, {"id": "sls", "enable_serverless_compute": True}]},
+        ("POST", STATEMENTS): {"statement_id": "1", "status": {"state": "SUCCEEDED"}},
+    })
+    sql = ensure_catalog(spec, "dev", api, log=lambda _: None)
+
+    assert sql.startswith("CREATE CATALOG IF NOT EXISTS gov_dev COMMENT")
+    (_, _, _, body), = [c for c in api.calls if c[0] == "POST"]
+    assert body["warehouse_id"] == "sls" and body["statement"] == sql

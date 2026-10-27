@@ -28,5 +28,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: databricks/setup-cli@main  # pin to a release tag once chosen
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q pyyaml
+      # Default Storage rejects the bundle catalogs API, so the catalog is created with SQL first
+      - run: PYTHONPATH=src python -m gov_engine ensure-catalog --env "$TARGET"
       - run: databricks bundle deploy -t "$TARGET"
       - run: databricks bundle run -t "$TARGET" governance_apply

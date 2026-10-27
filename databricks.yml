@@ -1,4 +1,5 @@
-# Databricks Asset Bundle. The bundle owns infrastructure (schemas, jobs, dashboards);
+# Databricks Asset Bundle. The bundle owns infrastructure (schemas, jobs, dashboards); the catalog
+# is created first by `gov_engine ensure-catalog` (SQL), since Default Storage rejects the catalogs API;
 # gov_engine owns access policy (grants, tags, masks, row filters). See docs/adr/0002.
 #
 # Auth: locally a CLI profile (`databricks auth login`); in CI the gov-deployer service principal

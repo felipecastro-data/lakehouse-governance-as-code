@@ -77,7 +77,7 @@ governance/            the policy — single source of truth
   contracts/           ODCS data contracts per table
 src/gov_engine/        validate · render · apply · groups + governed tags sync · (drift, lineage)
 src/jobs/              Databricks job entrypoints
-resources/             bundle resources: catalog, schemas, jobs
+resources/             bundle resources: schemas, jobs
 databricks.yml         bundle targets (dev, prod)
 docs/                  plan, architecture, ADRs, RACI, production deltas
 tests/                 spec, render, apply and bundle-consistency tests
@@ -97,7 +97,7 @@ Deploy to Databricks Free Edition (findings from the [Day-0 spike](docs/spike-ch
 
 ```bash
 databricks auth login --host https://<your-workspace>.cloud.databricks.com
-make apply ENV=dev         # bundle deploy (catalog + schemas) + governance_apply job
+make apply ENV=dev         # create catalog (SQL) + bundle deploy (schemas, job) + governance_apply
 ```
 
 The apply job creates missing account groups and governed tags, then runs the SQL plan. In CI the

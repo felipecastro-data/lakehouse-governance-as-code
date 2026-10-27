@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 
+from gov_engine.catalog import ensure_catalog
 from gov_engine.databricks_api import cli_api
 from gov_engine.identity import sync_groups
 from gov_engine.render import PHASES, render_access_matrix, render_plan
@@ -31,6 +32,12 @@ def main(argv: list[str] | None = None) -> int:
         cmd = sub.add_parser(name, help=f"{help_text} (uses the Databricks CLI login)")
         cmd.add_argument("--dry-run", action="store_true")
         cmd.add_argument("--profile", help="Databricks CLI profile")
+
+    catalog = sub.add_parser("ensure-catalog", help="create the env catalog via SQL (run before bundle deploy)")
+    catalog.add_argument("--env", required=True)
+    catalog.add_argument("--warehouse-id", help="default: first serverless SQL warehouse")
+    catalog.add_argument("--dry-run", action="store_true")
+    catalog.add_argument("--profile", help="Databricks CLI profile")
 
     sub.add_parser("principals", help="print group names, one per line")
 
@@ -60,6 +67,8 @@ def main(argv: list[str] | None = None) -> int:
         sync_groups(spec, cli_api(args.profile), dry_run=args.dry_run)
     elif args.command == "sync-tags":
         sync_tag_policies(spec, cli_api(args.profile), dry_run=args.dry_run)
+    elif args.command == "ensure-catalog":
+        ensure_catalog(spec, args.env, cli_api(args.profile), args.warehouse_id, dry_run=args.dry_run)
     elif args.command == "principals":
         print("\n".join(spec.access.principals.values()))
     elif args.command == "matrix":

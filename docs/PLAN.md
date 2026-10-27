@@ -54,7 +54,8 @@ gov_dev / gov_prod                     (catalog per environment)
 
 | Concern | Owner |
 |---|---|
-| Catalog, schemas, volumes, jobs, dashboards | Databricks Asset Bundle |
+| Catalog | `gov_engine ensure-catalog` (SQL, before deploy) |
+| Schemas, volumes, jobs, dashboards | Databricks Asset Bundle |
 | Account groups, governed tags | `gov_engine` (REST API) |
 | Grants, tags, ABAC policies | `gov_engine` (SQL, driven by `governance/*.yml`) |
 | Group membership | People |
@@ -102,6 +103,7 @@ Details: [architecture.md](architecture.md).
 | Bundles don't manage policies, tags or groups | Policy needs another mechanism | `gov_engine` applied by a bundle job ([ADR-0002](adr/0002-governance-as-code-engine.md)) |
 | ABAC available but needs governed tags + existing principals | Ordering matters | Apply job: groups → tag policies (wait ~1 min if new) → SQL ([ADR-0005](adr/0005-native-abac.md)) |
 | Single admin user | Deploy identity tied to a person | `gov-deployer` service principal with OAuth M2M ([ADR-0006](adr/0006-deploy-service-principal.md)) |
+| Default Storage: catalogs REST API fails | Bundle can't create the catalog | `gov_engine ensure-catalog` runs `CREATE CATALOG` via SQL before deploy |
 | Bundle dev mode prefixes names | Schema names diverge from policy | No `mode`; explicit `presets` per target |
 
 ## 8. Day-0 spike
@@ -112,7 +114,7 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
 
 - [x] **Phase 0 — Spike**: verify Free Edition capabilities (items 2, 8, 9, 12 carried into later phases).
 - [x] **Phase 1a — Scaffold**: repo, spec files, engine (validate/plan/matrix), bundle skeleton, CI, docs, ADRs.
-- [x] **Phase 1a+ — ABAC redesign**: governed tags, catalog ABAC policies, account-group sync, catalog in bundle, OAuth deploy SP.
+- [x] **Phase 1a+ — ABAC redesign**: governed tags, catalog ABAC policies, account-group sync, OAuth deploy SP.
 - [ ] **Phase 1b — Foundation**: deploy as `gov-deployer`, sync groups + governed tags, apply grants and policies.
 - [ ] **Phase 2 — Data**: synthetic generator, bronze → silver → gold jobs.
 - [ ] **Phase 3 — Protection & verification**: apply masks/filters/tags, drift detection, PII propagation check.

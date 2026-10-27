@@ -18,7 +18,7 @@ flowchart LR
     end
 
     subgraph DBX["Databricks Free Edition"]
-        S[Catalog, schemas, jobs, dashboards<br/>owned by bundle]
+        S[Schemas, jobs, dashboards<br/>owned by bundle]
         J[governance_apply job<br/>runs gov_engine as gov-deployer]
         UC[(Unity Catalog<br/>account groups · governed tags · grants<br/>tags · ABAC policies)]
         ST[(System tables<br/>audit · lineage · information_schema)]
@@ -53,7 +53,8 @@ flowchart TB
 
 | Concern | Managed by | Why |
 |---|---|---|
-| Catalog, schemas, volumes, jobs, dashboards | Databricks Asset Bundle | Declarative infra with targets |
+| Catalog | `gov_engine ensure-catalog` (SQL, before deploy) | Default Storage rejects the catalogs API the bundle uses |
+| Schemas, volumes, jobs, dashboards | Databricks Asset Bundle | Declarative infra with targets |
 | Account groups, governed tags | `gov_engine` (REST API) | Account-level; must exist before policies reference them |
 | Grants, tags, ABAC policies, mask/filter functions, mapping tables | `gov_engine` (SQL) | Not expressible in bundles; policy must be one source of truth |
 | Group membership | People (admins) | Who is in a group is an access request, not code |
