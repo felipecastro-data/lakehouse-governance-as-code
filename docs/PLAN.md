@@ -9,7 +9,7 @@
 Most Unity Catalog demos show *features*. This project shows a *governance program*:
 
 1. **Declare** — policy lives in YAML (`governance/`): layout, classification levels, access policy, data contracts.
-2. **Apply** — a small engine (`src/gov_engine`) renders the spec into Unity Catalog SQL and applies it through a Databricks Asset Bundle job.
+2. **Apply** — a small engine (`src/gov_engine`) creates account groups and governed tags, then renders the spec into Unity Catalog SQL (grants, tags, native ABAC policies) and applies it through a Databricks Asset Bundle job.
 3. **Verify** — drift detection compares declared vs actual state; lineage checks catch PII flowing into untagged columns.
 4. **Measure** — a governance scorecard built on system tables tracks coverage and access to sensitive data.
 
@@ -20,7 +20,7 @@ Most Unity Catalog demos show *features*. This project shows a *governance progr
 | Data architecture | Environment × domain × layer layout, ownership split (bundle vs engine), ADRs |
 | Access control | Group-only grants, least privilege, separation of duties, break-glass group |
 | Data protection | Classification-driven column masks, mapping-table row filters, pseudonymization |
-| Classification | 4-level scheme, tag taxonomy, tag-driven enforcement (ABAC-equivalent) |
+| Classification | 4-level scheme as governed tags, native ABAC policies, auto-classification tags as a safety net |
 | Data contracts | ODCS v3 contracts per table: owner, classification, quality rules |
 | Observability | Audit + lineage views, drift detection, governance scorecard |
 | Privacy engineering | Right-to-erasure scenario across layers, proven with lineage and audit |
@@ -54,9 +54,10 @@ gov_dev / gov_prod                     (catalog per environment)
 
 | Concern | Owner |
 |---|---|
-| Catalogs, groups | One-time bootstrap (`gov_engine bootstrap`, scripts) |
-| Schemas, volumes, jobs, dashboards | Databricks Asset Bundle |
-| Grants, tags, masks, row filters | `gov_engine` (driven by `governance/*.yml`) |
+| Catalog, schemas, volumes, jobs, dashboards | Databricks Asset Bundle |
+| Account groups, governed tags | `gov_engine` (REST API) |
+| Grants, tags, ABAC policies | `gov_engine` (SQL, driven by `governance/*.yml`) |
+| Group membership | People |
 
 Details: [architecture.md](architecture.md).
 
@@ -68,8 +69,8 @@ Details: [architecture.md](architecture.md).
 | FR2 | Group-only access, declared in `access_policy.yml` | `SHOW GRANTS` contains no individual users |
 | FR3 | Least privilege: no human `MODIFY` in prod; analysts read gold only; bronze engineers only | Generated access matrix matches the policy |
 | FR4 | Classification: 4 levels (public, internal, confidential, restricted) mapped to controls | `classification.yml` is the single source; engine validates contracts against it |
-| FR5 | Tag-driven masking: a column's `pii_type` determines its mask function | Analyst sees masked email; `pii_readers` member sees clear value |
-| FR6 | Row filter via group→region mapping table | Changing the mapping changes visible rows without code change |
+| FR5 | Native ABAC: one catalog policy per PII type matches the governed `pii_type` tag (and system `class.*` tags) | Analyst sees masked email; `pii_readers` member sees clear value; no per-column `SET MASK` |
+| FR6 | Row filter policy on governed `filter_key` tag, backed by a group→region mapping table | Changing the mapping changes visible rows without code change |
 | FR7 | Data contracts (ODCS v3) for every governed table | Contracts validated in CI |
 | FR8 | Drift detection: declared vs actual grants, tags, masks | Manual `GRANT` shows up as drift |
 | FR9 | PII propagation check using column lineage | Downstream column fed by PII but untagged is flagged |
@@ -93,13 +94,14 @@ Details: [architecture.md](architecture.md).
 |---|---|---|
 | Single workspace & metastore | No workspace isolation or catalog binding | Environments = catalogs ([ADR-0001](adr/0001-environments-as-catalogs.md)) |
 | Serverless only, daily quota, small SQL warehouse | Small data, no always-on compute | Synthetic small data; manual/daily triggers |
-| Account console likely unavailable | Group/SP creation may be restricted | Spike item; principals are config in `access_policy.yml`, so fallback is a YAML change |
-| Cannot impersonate users | Hard to show both sides of a mask | Second test user; policy logic in one `can_see()` function |
+| No account console | Account groups/SPs only via workspace | Engine creates account groups through the workspace SCIM proxy; SP created in workspace |
+| Cannot impersonate users | Hard to show both sides of a mask | Second test user; exemptions are one `EXCEPT` clause per policy |
 | Restricted outbound internet | No arbitrary downloads | Generate data in-workspace |
 | Managed storage only | No external locations | Managed tables/volumes only |
 | System tables lag / limited retention | Audit not real-time | Daily scorecard; demo after delay |
-| Bundles don't manage masks/tags/groups | Policy needs another mechanism | `gov_engine` applied by a bundle job ([ADR-0002](adr/0002-governance-as-code-engine.md)) |
-| ABAC / governed tags may be unavailable | No native tag-driven policies | Engine emulates ABAC ([ADR-0003](adr/0003-classification-driven-masking.md)) |
+| Bundles don't manage policies, tags or groups | Policy needs another mechanism | `gov_engine` applied by a bundle job ([ADR-0002](adr/0002-governance-as-code-engine.md)) |
+| ABAC available but needs governed tags + existing principals | Ordering matters | Apply job: groups → tag policies (wait ~1 min if new) → SQL ([ADR-0005](adr/0005-native-abac.md)) |
+| Single admin user | Deploy identity tied to a person | `gov-deployer` service principal with OAuth M2M ([ADR-0006](adr/0006-deploy-service-principal.md)) |
 | Bundle dev mode prefixes names | Schema names diverge from policy | No `mode`; explicit `presets` per target |
 
 ## 8. Day-0 spike
@@ -108,9 +110,10 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
 
 ## 9. Phases
 
-- [ ] **Phase 0 — Spike**: verify Free Edition capabilities.
+- [x] **Phase 0 — Spike**: verify Free Edition capabilities (items 2, 8, 9, 12 carried into later phases).
 - [x] **Phase 1a — Scaffold**: repo, spec files, engine (validate/plan/matrix), bundle skeleton, CI, docs, ADRs.
-- [ ] **Phase 1b — Foundation**: bootstrap catalogs + groups, deploy schemas, apply grants.
+- [x] **Phase 1a+ — ABAC redesign**: governed tags, catalog ABAC policies, account-group sync, catalog in bundle, OAuth deploy SP.
+- [ ] **Phase 1b — Foundation**: deploy as `gov-deployer`, sync groups + governed tags, apply grants and policies.
 - [ ] **Phase 2 — Data**: synthetic generator, bronze → silver → gold jobs.
 - [ ] **Phase 3 — Protection & verification**: apply masks/filters/tags, drift detection, PII propagation check.
 - [ ] **Phase 4 — Observability**: audit + lineage views, governance scorecard dashboard.
@@ -125,3 +128,5 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
 | Contract format | ODCS v3 (subset + `customProperties`) |
 | Policy engine language | Python, `pyyaml` only (runs locally and on serverless) |
 | Group naming | `gov-<role>` (e.g. `gov-analysts-amer`) |
+| Masking mechanism | Native ABAC on governed tags ([ADR-0005](adr/0005-native-abac.md)) |
+| CI identity | `gov-deployer` service principal, OAuth M2M ([ADR-0006](adr/0006-deploy-service-principal.md)) |

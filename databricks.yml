@@ -1,7 +1,8 @@
 # Databricks Asset Bundle. The bundle owns infrastructure (schemas, jobs, dashboards);
 # gov_engine owns access policy (grants, tags, masks, row filters). See docs/adr/0002.
 #
-# Auth: set DATABRICKS_HOST + DATABRICKS_TOKEN, or use a CLI profile (`databricks auth login`).
+# Auth: locally a CLI profile (`databricks auth login`); in CI the gov-deployer service principal
+# via OAuth M2M (DATABRICKS_HOST, DATABRICKS_CLIENT_ID, DATABRICKS_CLIENT_SECRET). See docs/adr/0006.
 bundle:
   name: lakehouse-governance
 
@@ -27,8 +28,8 @@ targets:
   prod:
     variables:
       catalog: gov_prod
-    workspace:
-      root_path: /Workspace/Shared/.bundle/${bundle.name}/prod
+    # Default root path = the deployer's home folder (gov-deployer in CI), so no one else can edit
+    # the deployed files. /Workspace/Shared would be writable by every workspace user.
     presets:
       trigger_pause_status: UNPAUSED
       tags:

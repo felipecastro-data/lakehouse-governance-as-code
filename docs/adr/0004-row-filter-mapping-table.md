@@ -1,6 +1,6 @@
 # ADR-0004: Row filters backed by a mapping table
 
-- **Status**: Accepted (revisit after spike item 7)
+- **Status**: Accepted — confirmed by spike item 7; attachment updated by [ADR-0005](0005-native-abac.md)
 - **Date**: 2026-10-26
 
 ## Context
@@ -14,8 +14,9 @@ Each row filter in `access_policy.yml` declares a column, bypass principals and 
 principal → values mapping. The engine renders:
 
 - `governance.<filter>_access (group_name, value)` — overwritten from the spec on every apply.
-- `governance.<function>(row_value)` — `TRUE` for bypass groups, otherwise `EXISTS` a mapping row
-  for a group the current user belongs to.
+- `governance.<function>(row_value)` — `EXISTS` a mapping row for a group the current user belongs to.
+- An ABAC policy `filter_<name>` that applies the function to every column tagged
+  `filter_key = <name>`, with bypass principals in its `EXCEPT` clause.
 
 ## Consequences
 

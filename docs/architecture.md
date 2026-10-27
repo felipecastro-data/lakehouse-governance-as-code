@@ -18,9 +18,9 @@ flowchart LR
     end
 
     subgraph DBX["Databricks Free Edition"]
-        S[Schemas, jobs, dashboards<br/>owned by bundle]
-        J[governance_apply job<br/>runs gov_engine]
-        UC[(Unity Catalog<br/>grants · tags · masks · row filters)]
+        S[Catalog, schemas, jobs, dashboards<br/>owned by bundle]
+        J[governance_apply job<br/>runs gov_engine as gov-deployer]
+        UC[(Unity Catalog<br/>account groups · governed tags · grants<br/>tags · ABAC policies)]
         ST[(System tables<br/>audit · lineage · information_schema)]
         AV[audit views + scorecard]
         DR[drift + PII propagation checks]
@@ -42,7 +42,7 @@ flowchart TB
     M --> PROD[gov_prod]
     PROD --> CB[customer_bronze] & CS[customer_silver] & CG[customer_gold]
     PROD --> SB[sales_bronze] & SS[sales_silver] & SG[sales_gold]
-    PROD --> GOV[governance<br/>functions · mapping tables]
+    PROD --> GOV[governance<br/>mask/filter functions · mapping tables]
     PROD --> AUD[audit<br/>views over system tables]
 ```
 
@@ -53,9 +53,10 @@ flowchart TB
 
 | Concern | Managed by | Why |
 |---|---|---|
-| Catalogs, groups | Bootstrap (one-time) | Requires admin rights; rarely changes |
-| Schemas, volumes, jobs, dashboards | Databricks Asset Bundle | Declarative infra with targets |
-| Grants, tags, masks, row filters, mapping tables | `gov_engine` | Not expressible in bundles; policy must be one source of truth |
+| Catalog, schemas, volumes, jobs, dashboards | Databricks Asset Bundle | Declarative infra with targets |
+| Account groups, governed tags | `gov_engine` (REST API) | Account-level; must exist before policies reference them |
+| Grants, tags, ABAC policies, mask/filter functions, mapping tables | `gov_engine` (SQL) | Not expressible in bundles; policy must be one source of truth |
+| Group membership | People (admins) | Who is in a group is an access request, not code |
 
 Each object has exactly one owner so the two systems never overwrite each other ([ADR-0002](adr/0002-governance-as-code-engine.md)).
 
@@ -72,28 +73,34 @@ Each object has exactly one owner so the two systems never overwrite each other 
 | `auditors` | `gov-auditors` | Read `audit` schema only |
 
 Group names live in `access_policy.yml → principals`; everything else refers to logical names.
+Groups are created as **account** groups through `/api/2.0/account/scim/v2/Groups`: the plain
+workspace SCIM API creates workspace-local groups that Unity Catalog cannot resolve.
 
-## Policy evaluation at query time
+Deployments run as the **`gov-deployer`** service principal (OAuth M2M), which owns prod objects
+([ADR-0006](adr/0006-deploy-service-principal.md)).
+
+## Policy evaluation at query time (ABAC)
 
 ```mermaid
 sequenceDiagram
     participant U as Analyst (gov-analysts-amer)
     participant UC as Unity Catalog
+    participant P as ABAC policies on gov_prod
     participant RF as governance.filter_region
     participant MK as governance.mask_email
-    participant CS as governance.can_see
     U->>UC: SELECT * FROM customer_gold.customer_360
+    UC->>P: which policies match this table's tags for this user?
+    P-->>UC: filter_region (region tagged filter_key=region)<br/>mask_email (email tagged pii_type=email)
     UC->>RF: row_value = region
-    RF-->>UC: TRUE only if group mapped to region
+    RF-->>UC: TRUE only if a group of the user maps to the region
     UC->>MK: v = email
-    MK->>CS: can_see('confidential')
-    CS-->>MK: FALSE (not in gov-pii-readers)
     MK-->>UC: j***@example.com
     UC-->>U: AMER rows, masked email
 ```
 
-All mask functions delegate the "who may see this level" decision to `can_see()`, which is generated
-from `classification.yml`. Changing who can unmask a level is a one-line YAML change.
+Policies are attached to the catalog and find columns through **governed tags**; the user's groups
+decide whether they are in `TO` or `EXCEPT`. Contracts only tag columns, so a new table is protected
+as soon as it is tagged ([ADR-0005](adr/0005-native-abac.md)).
 
 ## Data flow
 

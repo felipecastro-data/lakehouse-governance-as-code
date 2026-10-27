@@ -9,60 +9,39 @@ INSERT OVERWRITE gov_prod.governance.region_access VALUES
   ('gov-pii-readers', 'EMEA');
 
 -- ===== functions =====
-CREATE OR REPLACE FUNCTION gov_prod.governance.can_see(level STRING)
-RETURNS BOOLEAN
-COMMENT 'True if the current user may see unmasked values at this level. Managed by gov_engine - do not edit by hand'
-RETURN CASE level
-    WHEN 'public' THEN TRUE
-    WHEN 'internal' THEN TRUE
-    WHEN 'confidential' THEN is_account_group_member('gov-pii-readers') OR is_account_group_member('gov-pii-restricted-readers')
-    WHEN 'restricted' THEN is_account_group_member('gov-pii-restricted-readers')
-    ELSE FALSE
-  END;
 CREATE OR REPLACE FUNCTION gov_prod.governance.mask_person_name(v STRING)
 RETURNS STRING
-COMMENT 'Mask for pii_type=person_name (confidential, initial_only). Managed by gov_engine - do not edit by hand'
-RETURN CASE WHEN gov_prod.governance.can_see('confidential') THEN v
-  ELSE concat(left(v, 1), '.') END;
+COMMENT 'Mask for pii_type=person_name (initial_only). Managed by gov_engine - do not edit by hand'
+RETURN concat(left(v, 1), '.');
 CREATE OR REPLACE FUNCTION gov_prod.governance.mask_email(v STRING)
 RETURNS STRING
-COMMENT 'Mask for pii_type=email (confidential, partial_email). Managed by gov_engine - do not edit by hand'
-RETURN CASE WHEN gov_prod.governance.can_see('confidential') THEN v
-  ELSE regexp_replace(v, '^(.)[^@]*', '$1***') END;
+COMMENT 'Mask for pii_type=email (partial_email). Managed by gov_engine - do not edit by hand'
+RETURN regexp_replace(v, '^(.)[^@]*', '$1***');
 CREATE OR REPLACE FUNCTION gov_prod.governance.mask_phone(v STRING)
 RETURNS STRING
-COMMENT 'Mask for pii_type=phone (confidential, last4). Managed by gov_engine - do not edit by hand'
-RETURN CASE WHEN gov_prod.governance.can_see('confidential') THEN v
-  ELSE concat(repeat('*', greatest(length(v) - 4, 0)), right(v, 4)) END;
+COMMENT 'Mask for pii_type=phone (last4). Managed by gov_engine - do not edit by hand'
+RETURN concat(repeat('*', greatest(length(v) - 4, 0)), right(v, 4));
 CREATE OR REPLACE FUNCTION gov_prod.governance.mask_street_address(v STRING)
 RETURNS STRING
-COMMENT 'Mask for pii_type=street_address (confidential, redact). Managed by gov_engine - do not edit by hand'
-RETURN CASE WHEN gov_prod.governance.can_see('confidential') THEN v
-  ELSE '***REDACTED***' END;
+COMMENT 'Mask for pii_type=street_address (redact). Managed by gov_engine - do not edit by hand'
+RETURN '***REDACTED***';
 CREATE OR REPLACE FUNCTION gov_prod.governance.mask_date_of_birth(v DATE)
 RETURNS DATE
-COMMENT 'Mask for pii_type=date_of_birth (confidential, year_only). Managed by gov_engine - do not edit by hand'
-RETURN CASE WHEN gov_prod.governance.can_see('confidential') THEN v
-  ELSE make_date(year(v), 1, 1) END;
+COMMENT 'Mask for pii_type=date_of_birth (year_only). Managed by gov_engine - do not edit by hand'
+RETURN make_date(year(v), 1, 1);
 CREATE OR REPLACE FUNCTION gov_prod.governance.mask_national_id(v STRING)
 RETURNS STRING
-COMMENT 'Mask for pii_type=national_id (restricted, sha256). Managed by gov_engine - do not edit by hand'
-RETURN CASE WHEN gov_prod.governance.can_see('restricted') THEN v
-  ELSE sha2(v, 256) END;
+COMMENT 'Mask for pii_type=national_id (sha256). Managed by gov_engine - do not edit by hand'
+RETURN sha2(v, 256);
 CREATE OR REPLACE FUNCTION gov_prod.governance.mask_card_number(v STRING)
 RETURNS STRING
-COMMENT 'Mask for pii_type=card_number (restricted, last4). Managed by gov_engine - do not edit by hand'
-RETURN CASE WHEN gov_prod.governance.can_see('restricted') THEN v
-  ELSE concat(repeat('*', greatest(length(v) - 4, 0)), right(v, 4)) END;
+COMMENT 'Mask for pii_type=card_number (last4). Managed by gov_engine - do not edit by hand'
+RETURN concat(repeat('*', greatest(length(v) - 4, 0)), right(v, 4));
 CREATE OR REPLACE FUNCTION gov_prod.governance.filter_region(row_value STRING)
 RETURNS BOOLEAN
 COMMENT 'Row filter on region, backed by region_access. Managed by gov_engine - do not edit by hand'
-RETURN is_account_group_member('gov-platform-admins')
-  OR is_account_group_member('gov-data-engineers')
-  OR is_account_group_member('gov-pii-restricted-readers')
-  OR is_account_group_member('gov-customer-stewards')
-  OR is_account_group_member('gov-sales-stewards')
-  OR EXISTS (SELECT 1 FROM gov_prod.governance.region_access a WHERE a.value = row_value AND is_account_group_member(a.group_name));
+RETURN EXISTS (SELECT 1 FROM gov_prod.governance.region_access a
+  WHERE a.value = row_value AND is_account_group_member(a.group_name));
 
 -- ===== grants =====
 GRANT USE CATALOG ON CATALOG gov_prod TO `gov-analysts-amer`;
@@ -103,7 +82,7 @@ ALTER TABLE gov_prod.customer_gold.customer_360 SET TAGS ('classification' = 'co
 ALTER TABLE gov_prod.customer_gold.customer_360 ALTER COLUMN `customer_id` SET TAGS ('classification' = 'internal');
 ALTER TABLE gov_prod.customer_gold.customer_360 ALTER COLUMN `full_name` SET TAGS ('classification' = 'confidential', 'pii_type' = 'person_name');
 ALTER TABLE gov_prod.customer_gold.customer_360 ALTER COLUMN `email` SET TAGS ('classification' = 'confidential', 'pii_type' = 'email');
-ALTER TABLE gov_prod.customer_gold.customer_360 ALTER COLUMN `region` SET TAGS ('classification' = 'internal');
+ALTER TABLE gov_prod.customer_gold.customer_360 ALTER COLUMN `region` SET TAGS ('classification' = 'internal', 'filter_key' = 'region');
 ALTER TABLE gov_prod.customer_gold.customer_360 ALTER COLUMN `order_count` SET TAGS ('classification' = 'internal');
 ALTER TABLE gov_prod.customer_gold.customer_360 ALTER COLUMN `lifetime_value` SET TAGS ('classification' = 'internal');
 ALTER TABLE gov_prod.customer_gold.customer_360 ALTER COLUMN `last_order_ts` SET TAGS ('classification' = 'internal');
@@ -116,7 +95,7 @@ ALTER TABLE gov_prod.customer_silver.customers ALTER COLUMN `date_of_birth` SET 
 ALTER TABLE gov_prod.customer_silver.customers ALTER COLUMN `national_id` SET TAGS ('classification' = 'restricted', 'pii_type' = 'national_id');
 ALTER TABLE gov_prod.customer_silver.customers ALTER COLUMN `street_address` SET TAGS ('classification' = 'confidential', 'pii_type' = 'street_address');
 ALTER TABLE gov_prod.customer_silver.customers ALTER COLUMN `country` SET TAGS ('classification' = 'internal');
-ALTER TABLE gov_prod.customer_silver.customers ALTER COLUMN `region` SET TAGS ('classification' = 'internal');
+ALTER TABLE gov_prod.customer_silver.customers ALTER COLUMN `region` SET TAGS ('classification' = 'internal', 'filter_key' = 'region');
 ALTER TABLE gov_prod.customer_silver.customers ALTER COLUMN `created_at` SET TAGS ('classification' = 'internal');
 ALTER TABLE gov_prod.sales_silver.orders SET TAGS ('classification' = 'restricted', 'domain' = 'sales', 'layer' = 'silver', 'owner' = 'gov-sales-stewards', 'data_contract' = 'sales.orders');
 ALTER TABLE gov_prod.sales_silver.orders ALTER COLUMN `order_id` SET TAGS ('classification' = 'internal');
@@ -125,20 +104,62 @@ ALTER TABLE gov_prod.sales_silver.orders ALTER COLUMN `order_ts` SET TAGS ('clas
 ALTER TABLE gov_prod.sales_silver.orders ALTER COLUMN `amount` SET TAGS ('classification' = 'internal');
 ALTER TABLE gov_prod.sales_silver.orders ALTER COLUMN `currency` SET TAGS ('classification' = 'internal');
 ALTER TABLE gov_prod.sales_silver.orders ALTER COLUMN `card_number` SET TAGS ('classification' = 'restricted', 'pii_type' = 'card_number');
-ALTER TABLE gov_prod.sales_silver.orders ALTER COLUMN `region` SET TAGS ('classification' = 'internal');
+ALTER TABLE gov_prod.sales_silver.orders ALTER COLUMN `region` SET TAGS ('classification' = 'internal', 'filter_key' = 'region');
 
--- ===== masks =====
-ALTER TABLE gov_prod.customer_gold.customer_360 ALTER COLUMN `full_name` SET MASK gov_prod.governance.mask_person_name;
-ALTER TABLE gov_prod.customer_gold.customer_360 ALTER COLUMN `email` SET MASK gov_prod.governance.mask_email;
-ALTER TABLE gov_prod.customer_silver.customers ALTER COLUMN `full_name` SET MASK gov_prod.governance.mask_person_name;
-ALTER TABLE gov_prod.customer_silver.customers ALTER COLUMN `email` SET MASK gov_prod.governance.mask_email;
-ALTER TABLE gov_prod.customer_silver.customers ALTER COLUMN `phone` SET MASK gov_prod.governance.mask_phone;
-ALTER TABLE gov_prod.customer_silver.customers ALTER COLUMN `date_of_birth` SET MASK gov_prod.governance.mask_date_of_birth;
-ALTER TABLE gov_prod.customer_silver.customers ALTER COLUMN `national_id` SET MASK gov_prod.governance.mask_national_id;
-ALTER TABLE gov_prod.customer_silver.customers ALTER COLUMN `street_address` SET MASK gov_prod.governance.mask_street_address;
-ALTER TABLE gov_prod.sales_silver.orders ALTER COLUMN `card_number` SET MASK gov_prod.governance.mask_card_number;
-
--- ===== row_filters =====
-ALTER TABLE gov_prod.customer_gold.customer_360 SET ROW FILTER gov_prod.governance.filter_region ON (`region`);
-ALTER TABLE gov_prod.customer_silver.customers SET ROW FILTER gov_prod.governance.filter_region ON (`region`);
-ALTER TABLE gov_prod.sales_silver.orders SET ROW FILTER gov_prod.governance.filter_region ON (`region`);
+-- ===== policies =====
+CREATE OR REPLACE POLICY mask_person_name ON CATALOG gov_prod
+COMMENT 'Mask person_name (confidential). Managed by gov_engine - do not edit by hand'
+COLUMN MASK gov_prod.governance.mask_person_name
+TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`
+FOR TABLES
+MATCH COLUMNS has_tag_value('pii_type', 'person_name') OR has_tag('class.name') AS col
+ON COLUMN col;
+CREATE OR REPLACE POLICY mask_email ON CATALOG gov_prod
+COMMENT 'Mask email (confidential). Managed by gov_engine - do not edit by hand'
+COLUMN MASK gov_prod.governance.mask_email
+TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`
+FOR TABLES
+MATCH COLUMNS has_tag_value('pii_type', 'email') OR has_tag('class.email_address') AS col
+ON COLUMN col;
+CREATE OR REPLACE POLICY mask_phone ON CATALOG gov_prod
+COMMENT 'Mask phone (confidential). Managed by gov_engine - do not edit by hand'
+COLUMN MASK gov_prod.governance.mask_phone
+TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`
+FOR TABLES
+MATCH COLUMNS has_tag_value('pii_type', 'phone') OR has_tag('class.phone_number') AS col
+ON COLUMN col;
+CREATE OR REPLACE POLICY mask_street_address ON CATALOG gov_prod
+COMMENT 'Mask street_address (confidential). Managed by gov_engine - do not edit by hand'
+COLUMN MASK gov_prod.governance.mask_street_address
+TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`
+FOR TABLES
+MATCH COLUMNS has_tag_value('pii_type', 'street_address') OR has_tag('class.street_address') OR has_tag('class.location') AS col
+ON COLUMN col;
+CREATE OR REPLACE POLICY mask_date_of_birth ON CATALOG gov_prod
+COMMENT 'Mask date_of_birth (confidential). Managed by gov_engine - do not edit by hand'
+COLUMN MASK gov_prod.governance.mask_date_of_birth
+TO `account users` EXCEPT `gov-pii-readers`, `gov-pii-restricted-readers`
+FOR TABLES
+MATCH COLUMNS has_tag_value('pii_type', 'date_of_birth') AS col
+ON COLUMN col;
+CREATE OR REPLACE POLICY mask_national_id ON CATALOG gov_prod
+COMMENT 'Mask national_id (restricted). Managed by gov_engine - do not edit by hand'
+COLUMN MASK gov_prod.governance.mask_national_id
+TO `account users` EXCEPT `gov-pii-restricted-readers`
+FOR TABLES
+MATCH COLUMNS has_tag_value('pii_type', 'national_id') OR has_tag('class.us_ssn') OR has_tag('class.passport') OR has_tag('class.driver_license') AS col
+ON COLUMN col;
+CREATE OR REPLACE POLICY mask_card_number ON CATALOG gov_prod
+COMMENT 'Mask card_number (restricted). Managed by gov_engine - do not edit by hand'
+COLUMN MASK gov_prod.governance.mask_card_number
+TO `account users` EXCEPT `gov-pii-restricted-readers`
+FOR TABLES
+MATCH COLUMNS has_tag_value('pii_type', 'card_number') OR has_tag('class.credit_card') AS col
+ON COLUMN col;
+CREATE OR REPLACE POLICY filter_region ON CATALOG gov_prod
+COMMENT 'Row filter on filter_key=region. Managed by gov_engine - do not edit by hand'
+ROW FILTER gov_prod.governance.filter_region
+TO `account users` EXCEPT `gov-platform-admins`, `gov-data-engineers`, `gov-pii-restricted-readers`, `gov-customer-stewards`, `gov-sales-stewards`
+FOR TABLES
+MATCH COLUMNS has_tag_value('filter_key', 'region') AS col
+USING COLUMNS (col);

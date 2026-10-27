@@ -36,14 +36,15 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
     steps:
       - uses: actions/checkout@v4
       - uses: databricks/setup-cli@main  # pin to a release tag once chosen
-        if: env.DATABRICKS_HOST != ''
-      - if: env.DATABRICKS_HOST != ''
+        if: env.DATABRICKS_CLIENT_ID != ''
+      - if: env.DATABRICKS_CLIENT_ID != ''
         run: |
           databricks bundle validate -t dev
           databricks bundle validate -t prod
-      - if: env.DATABRICKS_HOST == ''
-        run: echo "::notice::DATABRICKS_HOST secret not set - skipping bundle validation"
+      - if: env.DATABRICKS_CLIENT_ID == ''
+        run: echo "::notice::gov-deployer secrets not set - skipping bundle validation"

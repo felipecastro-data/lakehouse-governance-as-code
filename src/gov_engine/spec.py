@@ -23,6 +23,7 @@ LOGICAL_TO_SQL = {
 
 _IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]*$")
 _TAG_VALUE = re.compile(r"^[A-Za-z0-9_.\- ]+$")
+_SYSTEM_TAG = re.compile(r"^class\.[a-z0-9_]+$")
 
 
 class SpecError(ValueError):
@@ -74,6 +75,7 @@ class PiiType:
     name: str
     classification: str
     strategy: str
+    system_tags: tuple[str, ...] = ()  # Databricks `class.*` tags that also trigger this mask
 
 
 @dataclass(frozen=True)
@@ -224,7 +226,10 @@ def _load_classification(raw: dict[str, Any]) -> Classification:
             for name, cfg in raw["mask_strategies"].items()
         },
         pii_types={
-            name: PiiType(name=name, classification=cfg["classification"], strategy=cfg["strategy"])
+            name: PiiType(
+                name=name, classification=cfg["classification"], strategy=cfg["strategy"],
+                system_tags=_tuple(cfg.get("system_tags")),
+            )
             for name, cfg in raw["pii_types"].items()
         },
     )
@@ -336,6 +341,11 @@ def validate(spec: Spec) -> list[str]:
             errors.append(f"classification.pii_types.{pii.name}: unknown level {pii.classification!r}")
         if pii.strategy not in cls.strategies:
             errors.append(f"classification.pii_types.{pii.name}: unknown strategy {pii.strategy!r}")
+        if not _IDENTIFIER.match(pii.name):
+            errors.append(f"classification.pii_types.{pii.name}: name must be a lowercase identifier")
+        for tag in pii.system_tags:
+            if not _SYSTEM_TAG.match(tag):
+                errors.append(f"classification.pii_types.{pii.name}: {tag!r} is not a `class.*` system tag")
 
     for i, g in enumerate(access.grants):
         where = f"access_policy.grants[{i}]"

@@ -15,14 +15,16 @@ concurrency: deploy-${{ github.event.inputs.target || 'dev' }}
 
 jobs:
   deploy:
-    # Enable once DATABRICKS_HOST/DATABRICKS_TOKEN secrets exist: repo variable DEPLOY_ENABLED=true
+    # Enable once the gov-deployer secrets exist: repo variable DEPLOY_ENABLED=true
     if: vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.target || 'dev' }}  # add required reviewers on `prod`
+    environment: ${{ github.event.inputs.target || 'dev' }}  # `prod` requires approval
     env:
       TARGET: ${{ github.event.inputs.target || 'dev' }}
+      # OAuth M2M as the gov-deployer service principal (docs/adr/0006-deploy-service-principal.md)
       DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
     steps:
       - uses: actions/checkout@v4
       - uses: databricks/setup-cli@main  # pin to a release tag once chosen

@@ -1,6 +1,6 @@
 # ADR-0003: Classification-driven masking (ABAC semantics)
 
-- **Status**: Accepted (revisit after spike item 10)
+- **Status**: Superseded by [ADR-0005](0005-native-abac.md) — the spike found native ABAC on Free Edition
 - **Date**: 2026-10-26
 
 ## Context

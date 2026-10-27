@@ -1,5 +1,6 @@
 # Classification scheme and the controls attached to each level.
-# See docs/adr/0003-classification-driven-masking.md
+# Levels, PII types and row filter keys become governed tags; masks are attached by ABAC
+# policies that match those tags. See docs/adr/0005-native-abac.md
 
 # Ordered from least to most sensitive.
 levels:
@@ -11,7 +12,7 @@ levels:
     unmasked_for: all
   confidential:
     description: Personal data (GDPR personal data). Masked by default.
-    unmasked_for: [pii_readers, pii_restricted_readers]
+    unmasked_for: [pii_readers, pii_restricted_readers]   # rendered as the policy's EXCEPT clause
   restricted:
     description: Highly sensitive (government IDs, payment cards). Masked or pseudonymized.
     unmasked_for: [pii_restricted_readers]
@@ -38,25 +39,34 @@ mask_strategies:
     expression: "make_date(year(v), 1, 1)"
 
 # Each PII type has a minimum classification level and a mask strategy.
+# `system_tags`: Databricks data-classification tags that trigger the same mask, so columns found
+# by automatic classification are protected even before a contract declares them.
 pii_types:
   person_name:
     classification: confidential
     strategy: initial_only
+    system_tags: [class.name]
   email:
     classification: confidential
     strategy: partial_email
+    system_tags: [class.email_address]
   phone:
     classification: confidential
     strategy: last4
+    system_tags: [class.phone_number]
   street_address:
     classification: confidential
     strategy: redact
+    system_tags: [class.street_address, class.location]
   date_of_birth:
     classification: confidential
     strategy: year_only
+    # no system_tags: auto-classified birth dates may be STRING, and this mask takes a DATE
   national_id:
     classification: restricted
     strategy: sha256   # pseudonymized: still joinable, not reversible
+    system_tags: [class.us_ssn, class.passport, class.driver_license]
   card_number:
     classification: restricted
     strategy: last4
+    system_tags: [class.credit_card]

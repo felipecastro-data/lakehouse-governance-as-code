@@ -6,13 +6,13 @@ deliberate trade-offs, not gaps in understanding.
 | Area | This project (Free Edition) | Enterprise setup |
 |---|---|---|
 | Environment isolation | Catalog per env in one workspace | Workspace per env + **workspace-catalog binding** so prod data is unreachable from dev |
-| Identity | Groups created in workspace UI | SCIM from the IdP (Entra ID / Okta), account-level groups, SSO, no local users |
-| Deployment identity | PAT or user OAuth | Service principal per env with OAuth M2M; `run_as` on jobs; humans never own prod objects |
+| Identity | Engine creates account groups via the workspace SCIM proxy | SCIM from the IdP (Entra ID / Okta), SSO, no local users; engine only checks groups exist |
+| Deployment identity | One `gov-deployer` service principal (OAuth M2M), workspace admin | One service principal per environment with least privilege: `CREATE CATALOG`, `MANAGE` on its tag policies, no workspace admin |
 | Storage | Default managed storage | Managed locations per catalog on dedicated storage accounts; external locations with storage credentials |
 | Encryption | Platform-managed keys | Customer-managed keys for managed services and storage |
 | Networking | Public endpoints | Private Link, IP access lists, serverless egress control |
-| Tag-driven policy | `gov_engine` emulates ABAC | Native **ABAC policies** + governed tags; engine shrinks to tag assignment and drift checks |
-| Classification | Declared in contracts | Automated data classification scans feeding steward review |
+| Tag-driven policy | Native ABAC policies on governed tags (same as enterprise) | Policies at metastore/catalog level shared across workspaces |
+| Classification | Declared in contracts; policies also match system `class.*` tags | Automated data classification scans on every catalog, with steward review of new findings |
 | Audit | System tables queried in-workspace | Audit logs also delivered to SIEM; alerts on privileged actions |
 | Data sharing | Out of scope | Delta Sharing with recipient-level row filters |
 | Change control | PR review + CI | PR review, CODEOWNERS per domain, prod deploy behind environment approval |

@@ -2,7 +2,7 @@ resources:
   jobs:
     governance_apply:
       name: governance-apply-${bundle.target}
-      description: Applies governance/*.yml to Unity Catalog (grants, tags, masks, row filters).
+      description: Applies governance/*.yml - account groups, governed tags, grants, tags, ABAC policies.
       max_concurrent_runs: 1
       tasks:
         - task_key: apply_policies
@@ -16,3 +16,4 @@ resources:
             environment_version: "2"
             dependencies:
               - pyyaml>=6
+              - databricks-sdk>=0.40

@@ -1,36 +1,37 @@
 # Must match governance/layout.yml (enforced by tests/test_consistency.py).
+# catalog_name references the catalog resource so the bundle creates the catalog first.
 # No grants here: access is owned by gov_engine.
 resources:
   schemas:
     customer_bronze:
-      catalog_name: ${var.catalog}
+      catalog_name: ${resources.catalogs.lakehouse.name}
       name: customer_bronze
       comment: Raw customer data. Engineers only.
     customer_silver:
-      catalog_name: ${var.catalog}
+      catalog_name: ${resources.catalogs.lakehouse.name}
       name: customer_silver
       comment: Conformed customer data. PII masked, rows filtered by region.
     customer_gold:
-      catalog_name: ${var.catalog}
+      catalog_name: ${resources.catalogs.lakehouse.name}
       name: customer_gold
       comment: Customer data products.
     sales_bronze:
-      catalog_name: ${var.catalog}
+      catalog_name: ${resources.catalogs.lakehouse.name}
       name: sales_bronze
       comment: Raw sales data. Engineers only.
     sales_silver:
-      catalog_name: ${var.catalog}
+      catalog_name: ${resources.catalogs.lakehouse.name}
       name: sales_silver
       comment: Conformed orders and payments. PII masked, rows filtered by region.
     sales_gold:
-      catalog_name: ${var.catalog}
+      catalog_name: ${resources.catalogs.lakehouse.name}
       name: sales_gold
       comment: Sales data products.
     governance:
-      catalog_name: ${var.catalog}
+      catalog_name: ${resources.catalogs.lakehouse.name}
       name: governance
       comment: Mask and row filter functions, mapping tables. Managed by gov_engine.
     audit:
-      catalog_name: ${var.catalog}
+      catalog_name: ${resources.catalogs.lakehouse.name}
       name: audit
       comment: Curated views over system tables for auditors.

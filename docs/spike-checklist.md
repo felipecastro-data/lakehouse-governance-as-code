@@ -1,18 +1,38 @@
 # Day-0 Spike — Free Edition capability check
 
-Run these before Phase 1b. Record the result and any design change next to each item.
+Run on 2026-10-27 against a Databricks Free Edition workspace (CLI v1.22.1, Serverless Starter
+Warehouse 2X-Small). Test SQL: [`scripts/spike.sql`](../scripts/spike.sql).
 
-| # | Question | How to verify | Result | Design impact if "no" |
-|---|---|---|---|---|
-| 1 | Can I create groups, and are they **account-level** (usable in UC grants)? | Settings → Identity and access → Groups → create `gov-spike`; then `GRANT USE CATALOG ON CATALOG main TO \`gov-spike\`` | | Grant to users directly in a `principals` override; document as delta |
-| 2 | Can I invite a second user? | Settings → Identity and access → Users → Add | | Demo by toggling own group membership |
-| 3 | Can I create a service principal + OAuth secret for CI? | Settings → Identity and access → Service principals | | CI uses a PAT stored as a GitHub secret |
-| 4 | Can I create catalogs on default storage? | `CREATE CATALOG gov_spike` | | Use `main` catalog with env-prefixed schemas |
-| 5 | Which system schemas are enabled? | `SHOW SCHEMAS IN system`; `SELECT * FROM system.access.audit LIMIT 1`; same for `table_lineage`, `column_lineage` | | Scorecard uses `information_schema` only |
-| 6 | Are `column_masks`, `row_filters`, `column_tags`, `table_tags` in `information_schema`? | `SHOW TABLES IN system.information_schema` | | Drift check uses `DESCRIBE TABLE EXTENDED` |
-| 7 | Do row filters with a mapping-table subquery work on serverless? | Create a test table + filter from `gov_engine plan` output | | Hardcode regions in the filter function |
-| 8 | Do mask/filter functions require `EXECUTE` for readers? | Query a masked table as the second user without `EXECUTE` | | Add `EXECUTE` grant on `governance` schema |
-| 9 | Is PyPI reachable from serverless (job environment dependencies)? | Job with `dependencies: [faker]` | | Generate data with SQL / Python stdlib |
-| 10 | Are ABAC policies / governed tags available? | Catalog Explorer → Policies; `CREATE POLICY` | | Keep engine-based tag enforcement (ADR-0003) |
-| 11 | Does the CLI support the bundle `catalogs` resource? | `databricks bundle validate` with a `catalogs:` block | | Keep catalog creation in bootstrap |
-| 12 | Daily quota / concurrency limits observed | Workspace usage page | | Size data and schedules accordingly |
+| # | Question | Result | Design impact |
+|---|---|---|---|
+| 1 | Can I create groups usable in UC grants? | ✅ UI creates groups "to account and workspace"; `GRANT USE CATALOG ... TO \`gov-spike\`` works | Group-only access as designed |
+| 2 | Can I invite a second user? | ⏳ Only 1 user today; UI check pending | Needed for the two-sided masking demo |
+| 3 | Service principal + OAuth secret for CI? | ✅ SP created via CLI; OAuth secret create/delete works | CI uses a **deploy service principal (OAuth M2M)**, not a PAT |
+| 4 | Create catalogs on default storage? | ✅ `CREATE CATALOG` works | Catalog per environment as designed |
+| 5 | System schemas enabled? | ✅ `access.audit` (6k events / 7 days), `table_lineage`, `column_lineage`, plus `billing`, `query`, `compute`, `lakeflow`, `tags`, … Audit lag ≈ 13 min | Audit + lineage views and scorecard are feasible |
+| 6 | Policy views in `information_schema`? | ✅ `column_masks`, `row_filters`, `column_tags`, `table_tags`, `*_privileges`, `abac_policy_definitions` | Drift detection can be pure SQL |
+| 7 | Mapping-table row filter on serverless? | ✅ 1 of 2 rows returned; mask calling `can_see()` returns `a***@example.com` | ADR-0004 confirmed |
+| 8 | Do readers need `EXECUTE` on mask/filter functions? | ⏳ Needs a second user (item 2) | Grant `EXECUTE` on `governance` if required |
+| 9 | PyPI reachable from serverless jobs? | ⏳ Phase 2 (data generator) | Fallback: stdlib / SQL generation |
+| 10 | ABAC policies / governed tags? | ✅ **Available.** 100+ system `class.*` governed tags; custom governed tag created via `/api/2.1/tag-policies`; `CREATE POLICY ... COLUMN MASK ... MATCH COLUMNS has_tag_value(...)` masked the column. New tag policies take ~1 min to propagate | Revisit ADR-0003: native ABAC instead of per-column `SET MASK` |
+| 11 | Bundle `catalogs` resource supported? | ✅ `bundle validate` accepts it (CLI v1.22.1); project bundle validates for `dev` | Catalogs can move into the bundle |
+| 12 | Quota / concurrency limits | ⏳ Observe during Phase 2 | Size data and schedules accordingly |
+
+## Follow-up findings (2026-10-27, during the ABAC redesign)
+
+- **Catalog-level ABAC verified end to end**: `CREATE POLICY ... ON CATALOG` with `COMMENT`, `COLUMN MASK`
+  and `ROW FILTER ... USING COLUMNS`, `EXCEPT` with several groups, and `has_tag_value(...) OR has_tag('class.*')`.
+- **Policies require every `EXCEPT` principal to exist** (`PRINCIPAL_DOES_NOT_EXIST`).
+- **`databricks groups create` makes workspace-local groups** that Unity Catalog cannot see. Account groups are
+  created through the workspace proxy `/api/2.0/account/scim/v2/Groups` → `gov_engine sync-groups`.
+- **Service principals created in the workspace are account-level** (visible in the account SCIM proxy).
+- **Tag policies can be updated in place** with `PATCH /api/2.1/tag-policies/{key}?update_mask=description,values`.
+
+## Spike artifacts to clean up after item 8
+
+- Catalog `gov_spike` (`DROP CATALOG gov_spike CASCADE`)
+- Policy `spike_mask_email` (dropped with the catalog)
+- Governed tag `spike_pii_type` (`databricks api delete /api/2.1/tag-policies/spike_pii_type`)
+- Service principal `gov-spike-sp`
+- Governed tag `spike_filter_key`
+- Groups `gov-spike`, `gov-spike-acct` (account groups)
