@@ -117,6 +117,11 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
 - [x] **Phase 1a+ — ABAC redesign**: governed tags, catalog ABAC policies, account-group sync, OAuth deploy SP.
 - [x] **Phase 1b — Foundation**: deploy as `gov-deployer`, sync groups + governed tags, apply grants and policies (dev: 50 applied, 27 table tags waiting for Phase 2 tables, 0 failed).
 - [x] **Phase 2 — Data**: synthetic generator, contract-first tables, bronze → silver → gold job, contract quality checks ([ADR-0007](adr/0007-contract-first-tables-and-pipeline-identity.md)).
+  First dev run (2026-10-27), all tasks green: bronze 5,169 customer / 50,260 order rows → silver 4,984 / 48,857
+  (duplicates, unknown countries, test and orphan orders removed) → gold 4,984 profiles; 6/6 quality rules pass.
+  Read as `gov-platform-admins`: every PII column masked by its policy (`u***@example.com`, `********1679`,
+  DOB `1948-01-01`, SHA-256 national ID, card `************6688`); all regions visible (row filter bypass).
+  Gold holds orders from all three regions, which shows the pipeline identity bypasses the row filter.
 - [ ] **Phase 3 — Protection & verification**: apply masks/filters/tags, drift detection, PII propagation check.
 - [ ] **Phase 4 — Observability**: audit + lineage views, governance scorecard dashboard.
 - [ ] **Phase 5 — Privacy & polish**: right-to-erasure, `make demo`, README screenshots, deploy workflow.
