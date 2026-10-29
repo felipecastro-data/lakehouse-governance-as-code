@@ -114,7 +114,7 @@ same commands run as the `gov-deployer` service principal ([ADR-0006](docs/adr/0
 | 1a | Scaffold: spec, engine, bundle, CI, docs; redesign on native ABAC | ✅ |
 | 1b | Deploy as `gov-deployer`, sync groups + governed tags, apply grants and policies | ✅ dev |
 | 2 | Synthetic data, contract-first tables, bronze → silver → gold, quality checks | ✅ dev |
-| 3 | Drift detection, PII propagation check via column lineage | ✅ dev (FR8 manual-grant demo pending) |
+| 3 | Drift detection, PII propagation check via column lineage | ✅ dev |
 | 4 | Audit + lineage views, scorecard dashboard | ⏳ |
 | 5 | Right-to-erasure, scripted demo | ⏳ |
 

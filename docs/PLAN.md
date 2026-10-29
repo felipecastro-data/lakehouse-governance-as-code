@@ -122,13 +122,13 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
   Read as `gov-platform-admins`: every PII column masked by its policy (`u***@example.com`, `********1679`,
   DOB `1948-01-01`, SHA-256 national ID, card `************6688`); all regions visible (row filter bypass).
   Gold holds orders from all three regions, which shows the pipeline identity bypasses the row filter.
-- [ ] **Phase 3 — Protection & verification**: drift detection and PII propagation check ([ADR-0008](adr/0008-drift-and-pii-propagation.md)).
+- [x] **Phase 3 — Protection & verification**: drift detection and PII propagation check ([ADR-0008](adr/0008-drift-and-pii-propagation.md)).
   - [x] `gov_engine.drift`: schemas, direct grants, contract columns and types, engine-owned tags, ABAC policies and per-column masks vs `information_schema`; critical drift fails the `drift` task.
   - [x] `gov_engine.lineage`: walks `system.access.column_lineage` from tagged PII (and bronze PII inferred from lineage) and flags untagged silver and gold columns.
   - [x] Checked locally against `gov_dev` (2026-10-28): 26 lineage edges, 9 bronze columns inferred as PII, 0 untagged PII columns; schema, table and tag drift clean.
   - [x] `system.access` can't be granted on (owned by "System user", account admins have no `MANAGE`), so lineage is read through `gov_dev.audit.column_lineage`, a view an account admin owns, with `SELECT` granted to `gov-deployer`.
   - [x] Dev pipeline run 2026-10-28 as `gov-deployer`, all tasks green: `drift` 0 critical / 0 warning (full visibility as catalog owner), `pii_propagation` 26 lineage edges, 9 bronze PII columns inferred, 0 untagged PII columns.
-  - [ ] Live FR8 acceptance: a manual `GRANT` fails the `drift` task.
+  - [x] FR8 acceptance (2026-10-28): a manual `GRANT SELECT ON VIEW gov_dev.audit.column_lineage TO gov-analysts-amer` failed the next run's `drift` task with `[critical] grant TABLE gov_dev.audit.column_lineage: undeclared SELECT to gov-analysts-amer`; every other task passed. The grant was then revoked.
 - [ ] **Phase 4 — Observability**: audit + lineage views, governance scorecard dashboard.
 - [ ] **Phase 5 — Privacy & polish**: right-to-erasure, `make demo`, README screenshots, deploy workflow.
 
