@@ -127,7 +127,8 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
   - [x] `gov_engine.lineage`: walks `system.access.column_lineage` from tagged PII (and bronze PII inferred from lineage) and flags untagged silver and gold columns.
   - [x] Checked locally against `gov_dev` (2026-10-28): 26 lineage edges, 9 bronze columns inferred as PII, 0 untagged PII columns; schema, table and tag drift clean.
   - [x] `system.access` can't be granted on (owned by "System user", account admins have no `MANAGE`), so lineage is read through `gov_dev.audit.column_lineage`, a view an account admin owns, with `SELECT` granted to `gov-deployer`.
-  - [ ] Live acceptance run as `gov-deployer`: a manual `GRANT` shows up as drift.
+  - [x] Dev pipeline run 2026-10-28 as `gov-deployer`, all tasks green: `drift` 0 critical / 0 warning (full visibility as catalog owner), `pii_propagation` 26 lineage edges, 9 bronze PII columns inferred, 0 untagged PII columns.
+  - [ ] Live FR8 acceptance: a manual `GRANT` fails the `drift` task.
 - [ ] **Phase 4 — Observability**: audit + lineage views, governance scorecard dashboard.
 - [ ] **Phase 5 — Privacy & polish**: right-to-erasure, `make demo`, README screenshots, deploy workflow.
 
