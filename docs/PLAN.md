@@ -122,7 +122,11 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
   Read as `gov-platform-admins`: every PII column masked by its policy (`u***@example.com`, `********1679`,
   DOB `1948-01-01`, SHA-256 national ID, card `************6688`); all regions visible (row filter bypass).
   Gold holds orders from all three regions, which shows the pipeline identity bypasses the row filter.
-- [ ] **Phase 3 — Protection & verification**: apply masks/filters/tags, drift detection, PII propagation check.
+- [ ] **Phase 3 — Protection & verification**: drift detection and PII propagation check ([ADR-0008](adr/0008-drift-and-pii-propagation.md)).
+  - [x] `gov_engine.drift`: schemas, direct grants, contract columns and types, engine-owned tags, ABAC policies and per-column masks vs `information_schema`; critical drift fails the `drift` task.
+  - [x] `gov_engine.lineage`: walks `system.access.column_lineage` from tagged PII (and bronze PII inferred from lineage) and flags untagged silver and gold columns.
+  - [x] Checked locally against `gov_dev` (2026-10-28): 26 lineage edges, 9 bronze columns inferred as PII, 0 untagged PII columns; schema, table and tag drift clean.
+  - [ ] Live acceptance run as `gov-deployer` (needs `system.access` access): a manual `GRANT` shows up as drift.
 - [ ] **Phase 4 — Observability**: audit + lineage views, governance scorecard dashboard.
 - [ ] **Phase 5 — Privacy & polish**: right-to-erasure, `make demo`, README screenshots, deploy workflow.
 
@@ -133,6 +137,8 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
 | Data domain | Retail: `customer` and `sales` domains |
 | Table creation | From contracts, before data lands ([ADR-0007](adr/0007-contract-first-tables-and-pipeline-identity.md)) |
 | Pipeline identity | `gov-deployer` in exempt group `gov-pipeline-runners` (ADR-0007) |
+| Bronze PII | Protected by layer, inferred from lineage; no bronze contracts ([ADR-0008](adr/0008-drift-and-pii-propagation.md)) |
+| Drift response | Report and fail on critical; never auto-revoke (ADR-0008) |
 | Environments | Two: `dev`, `prod` |
 | Contract format | ODCS v3 (subset + `customProperties`) |
 | Policy engine language | Python, `pyyaml` only (runs locally and on serverless) |

@@ -30,7 +30,7 @@ flowchart LR
 | **Classification** | 4 levels and PII types as **governed tags**; Databricks auto-classification tags as a safety net |
 | **Data protection** | **Native ABAC**: one catalog policy per PII type, row filter policy backed by a mapping table, pseudonymization |
 | **Data contracts** | [ODCS v3](https://bitol-io.github.io/open-data-contract-standard/) contract per governed table; the contract creates the table and its quality rules gate the pipeline |
-| **Verification** | Spec validation in CI, drift detection, PII propagation check via column lineage *(Phase 3)* |
+| **Verification** | Spec validation in CI; drift detection over `information_schema` and a PII propagation check over column lineage, as pipeline tasks ([ADR-0008](docs/adr/0008-drift-and-pii-propagation.md)) |
 | **Observability** | Audit + lineage views and a governance scorecard *(Phase 4)* |
 | **Platform engineering** | Databricks Asset Bundles, GitHub Actions, unit + consistency tests |
 
@@ -75,8 +75,8 @@ governance/            the policy — single source of truth
   classification.yml   levels, mask strategies, PII types
   access_policy.yml    principals, grants, row filters
   contracts/           ODCS data contracts per table
-src/gov_engine/        validate · render · apply · groups + governed tags sync · (drift, lineage)
-src/jobs/              Databricks job entrypoints: apply, synthetic data, SQL runner, quality
+src/gov_engine/        validate · render · apply · groups + governed tags sync · drift · lineage
+src/jobs/              Databricks job entrypoints: apply, synthetic data, SQL runner, quality, drift, PII propagation
 src/transforms/        silver and gold SQL, one file per contract table
 resources/             bundle resources: schemas, governance and pipeline jobs
 databricks.yml         bundle targets (dev, prod)
@@ -92,6 +92,8 @@ make test                  # unit + consistency tests
 make validate              # validate governance/*.yml
 make plan ENV=prod         # preview the SQL
 make matrix ENV=prod       # access matrix as Markdown
+make drift ENV=dev         # declared vs actual (run as the catalog owner)
+make pii ENV=dev           # untagged columns fed by PII (column lineage)
 ```
 
 Deploy to Databricks Free Edition (findings from the [Day-0 spike](docs/spike-checklist.md)):
@@ -112,7 +114,7 @@ same commands run as the `gov-deployer` service principal ([ADR-0006](docs/adr/0
 | 1a | Scaffold: spec, engine, bundle, CI, docs; redesign on native ABAC | ✅ |
 | 1b | Deploy as `gov-deployer`, sync groups + governed tags, apply grants and policies | ✅ dev |
 | 2 | Synthetic data, contract-first tables, bronze → silver → gold, quality checks | ✅ dev |
-| 3 | Policies live on data, drift detection, PII propagation | ⏳ |
+| 3 | Drift detection, PII propagation check via column lineage | 🚧 code + tests; live run pending |
 | 4 | Audit + lineage views, scorecard dashboard | ⏳ |
 | 5 | Right-to-erasure, scripted demo | ⏳ |
 

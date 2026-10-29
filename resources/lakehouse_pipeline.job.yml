@@ -1,4 +1,4 @@
-# Synthetic data -> bronze -> silver -> gold, then the contracts' quality rules.
+# Synthetic data -> bronze -> silver -> gold, then the contracts' quality rules, drift and PII propagation checks.
 # Runs as the deployer (gov-deployer), a member of gov-pipeline-runners, which the ABAC policies
 # exempt so silver and gold are built from clear data (docs/adr/0007).
 resources:
@@ -48,6 +48,21 @@ resources:
           environment_key: default
           spark_python_task:
             python_file: ../src/jobs/check_quality.py
+            parameters: ["--env", "${bundle.target}", "--root", "${workspace.file_path}"]
+
+        # Verification (docs/adr/0008): runs after the data, so it sees this run's tables and tags.
+        - task_key: drift
+          depends_on: [{task_key: quality}]
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/jobs/check_drift.py
+            parameters: ["--env", "${bundle.target}", "--root", "${workspace.file_path}"]
+
+        - task_key: pii_propagation
+          depends_on: [{task_key: quality}]
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/jobs/check_pii_propagation.py
             parameters: ["--env", "${bundle.target}", "--root", "${workspace.file_path}"]
 
       environments:

@@ -63,3 +63,12 @@ def test_pipeline_applies_governance_before_writing_data():
     tasks = tasks["resources"]["jobs"]["lakehouse_pipeline"]["tasks"]
     assert tasks[0]["task_key"] == "governance" and "run_job_task" in tasks[0]
     assert tasks[1]["depends_on"] == [{"task_key": "governance"}]
+
+
+def test_pipeline_ends_with_drift_and_pii_propagation_checks():
+    tasks = yaml.safe_load((ROOT / "resources" / "lakehouse_pipeline.job.yml").read_text())
+    tasks = {t["task_key"]: t for t in tasks["resources"]["jobs"]["lakehouse_pipeline"]["tasks"]}
+    for key, script in (("drift", "check_drift.py"), ("pii_propagation", "check_pii_propagation.py")):
+        assert tasks[key]["depends_on"] == [{"task_key": "quality"}]
+        assert tasks[key]["spark_python_task"]["python_file"] == f"../src/jobs/{script}"
+        assert (ROOT / "src" / "jobs" / script).exists()

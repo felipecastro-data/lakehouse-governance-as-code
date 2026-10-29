@@ -11,34 +11,13 @@ the bundle. The catalog is owned by whoever runs this: `gov-deployer` in CI (ADR
 
 from __future__ import annotations
 
-import time
 from collections.abc import Callable
 
+from gov_engine.databricks_api import pick_warehouse, run_statement
 from gov_engine.spec import Spec
 from gov_engine.tag_policies import ApiCall
 
-WAREHOUSES = "/api/2.0/sql/warehouses"
-STATEMENTS = "/api/2.0/sql/statements"
 COMMENT = "Governed lakehouse ({env}). Access, tags and policies managed by gov_engine."
-
-
-def pick_warehouse(api: ApiCall) -> str:
-    """First serverless warehouse, else the first one."""
-    warehouses = api("GET", WAREHOUSES, None, None).get("warehouses", [])
-    if not warehouses:
-        raise RuntimeError("no SQL warehouse found; pass --warehouse-id")
-    serverless = [w for w in warehouses if w.get("enable_serverless_compute")]
-    return (serverless or warehouses)[0]["id"]
-
-
-def run_statement(api: ApiCall, warehouse_id: str, sql: str, poll_seconds: float = 2.0) -> None:
-    resp = api("POST", STATEMENTS, None, {"warehouse_id": warehouse_id, "statement": sql, "wait_timeout": "50s"})
-    while resp.get("status", {}).get("state") in ("PENDING", "RUNNING"):
-        time.sleep(poll_seconds)
-        resp = api("GET", f"{STATEMENTS}/{resp['statement_id']}", None, None)
-    status = resp.get("status", {})
-    if status.get("state") != "SUCCEEDED":
-        raise RuntimeError(f"{sql!r} failed: {status.get('error', {}).get('message', status)}")
 
 
 def ensure_catalog(spec: Spec, env: str, api: ApiCall, warehouse_id: str | None = None,

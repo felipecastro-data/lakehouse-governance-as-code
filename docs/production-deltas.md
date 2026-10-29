@@ -14,6 +14,8 @@ deliberate trade-offs, not gaps in understanding.
 | Networking | Public endpoints | Private Link, IP access lists, serverless egress control |
 | Tag-driven policy | Native ABAC policies on governed tags (same as enterprise) | Policies at metastore/catalog level shared across workspaces |
 | Classification | Declared in contracts; policies also match system `class.*` tags | Automated data classification scans on every catalog, with steward review of new findings |
+| Drift response | Report and fail the pipeline; no auto-revoke | Same report as a scheduled job with alerts; reviewed `remediate` command per domain |
+| System table access | `gov-deployer` granted `system.access` by hand | Dedicated monitoring principal with `system` access, managed by the platform team |
 | Audit | System tables queried in-workspace | Audit logs also delivered to SIEM; alerts on privileged actions |
 | Data sharing | Out of scope | Delta Sharing with recipient-level row filters |
 | Change control | PR review + CI | PR review, CODEOWNERS per domain, prod deploy behind environment approval |

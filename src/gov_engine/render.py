@@ -169,20 +169,19 @@ def _tags(pairs: dict[str, str]) -> str:
     return ", ".join(f"{_lit(k)} = {_lit(v)}" for k, v in pairs.items())
 
 
-def render_tags(spec: Spec, env: str) -> list[Statement]:
-    """Tags are the only per-table statements: policies find columns through them."""
+def declared_tags(spec: Spec, env: str) -> dict[tuple[str, str | None], dict[str, str]]:
+    """{(table, column or None for the table itself): tags} for every contract table."""
     catalog = spec.catalog(env)
-    stmts = []
+    tags: dict[tuple[str, str | None], dict[str, str]] = {}
     for t in spec.tables:
         fq = f"{catalog}.{t.schema}.{t.name}"
-        table_tags = {
+        tags[(fq, None)] = {
             TAG_CLASSIFICATION: spec.table_classification(t),
             "domain": t.domain,
             "layer": t.layer,
             "owner": spec.group(t.owner),
             "data_contract": t.contract_id,
         }
-        stmts.append(Statement("tags", f"ALTER TABLE {fq} SET TAGS ({_tags(table_tags)})", fq))
         filter_column = spec.access.row_filters[t.row_filter].column if t.row_filter else None
         for c in t.columns:
             col_tags = {}
@@ -193,45 +192,73 @@ def render_tags(spec: Spec, env: str) -> list[Statement]:
             if c.name == filter_column:
                 col_tags[TAG_FILTER_KEY] = t.row_filter
             if col_tags:
-                stmts.append(Statement(
-                    "tags", f"ALTER TABLE {fq} ALTER COLUMN {_ident(c.name)} SET TAGS ({_tags(col_tags)})", fq
-                ))
-    return stmts
+                tags[(fq, c.name)] = col_tags
+    return tags
 
 
-def render_policies(spec: Spec, env: str) -> list[Statement]:
+def render_tags(spec: Spec, env: str) -> list[Statement]:
+    """Tags are the only per-table statements: policies find columns through them."""
+    return [
+        Statement("tags", f"ALTER TABLE {fq} SET TAGS ({_tags(tags)})", fq) if column is None else
+        Statement("tags", f"ALTER TABLE {fq} ALTER COLUMN {_ident(column)} SET TAGS ({_tags(tags)})", fq)
+        for (fq, column), tags in declared_tags(spec, env).items()
+    ]
+
+
+@dataclass(frozen=True)
+class Policy:
+    name: str
+    policy_type: str  # COLUMN_MASK | ROW_FILTER, as in information_schema.abac_policy_definitions
+    function: str
+    exempt: tuple[str, ...]  # group names in the EXCEPT clause
+    match: str
+    comment: str
+
+
+def declared_policies(spec: Spec, env: str) -> list[Policy]:
     """Catalog-wide ABAC policies: one column mask per PII type, one row filter per filter key."""
     catalog = spec.catalog(env)
-    stmts = []
+    policies = []
     for pii in spec.classification.pii_types.values():
         level = next(lvl for lvl in spec.classification.levels if lvl.name == pii.classification)
         if level.unmasked_for is None:
             continue  # level is visible to everyone; nothing to mask
-        match = " OR ".join([
-            f"has_tag_value({_lit(TAG_PII_TYPE)}, {_lit(pii.name)})",
-            *(f"has_tag({_lit(tag)})" for tag in pii.system_tags),
-        ])
-        exempt = [spec.group(p) for p in level.unmasked_for]
-        stmts.append(Statement("policies", "\n".join([
-            f"CREATE OR REPLACE POLICY mask_{pii.name} ON CATALOG {catalog}",
-            f"COMMENT {_lit(f'Mask {pii.name} ({pii.classification}). {MANAGED_BY}')}",
-            f"COLUMN MASK {_gov(catalog, 'mask_' + pii.name)}",
-            f"TO {_ident(ALL_USERS)}" + (f" EXCEPT {_principals(exempt)}" if exempt else ""),
-            "FOR TABLES",
-            f"MATCH COLUMNS {match} AS col",
-            "ON COLUMN col",
-        ])))
-
+        policies.append(Policy(
+            name=f"mask_{pii.name}",
+            policy_type="COLUMN_MASK",
+            function=_gov(catalog, "mask_" + pii.name),
+            exempt=tuple(spec.group(p) for p in level.unmasked_for),
+            match=" OR ".join([
+                f"has_tag_value({_lit(TAG_PII_TYPE)}, {_lit(pii.name)})",
+                *(f"has_tag({_lit(tag)})" for tag in pii.system_tags),
+            ]),
+            comment=f"Mask {pii.name} ({pii.classification}). {MANAGED_BY}",
+        ))
     for rf in spec.access.row_filters.values():
-        bypass = [spec.group(p) for p in rf.bypass]
+        policies.append(Policy(
+            name=f"filter_{rf.name}",
+            policy_type="ROW_FILTER",
+            function=_gov(catalog, rf.function),
+            exempt=tuple(spec.group(p) for p in rf.bypass),
+            match=f"has_tag_value({_lit(TAG_FILTER_KEY)}, {_lit(rf.name)})",
+            comment=f"Row filter on {TAG_FILTER_KEY}={rf.name}. {MANAGED_BY}",
+        ))
+    return policies
+
+
+def render_policies(spec: Spec, env: str) -> list[Statement]:
+    catalog = spec.catalog(env)
+    stmts = []
+    for p in declared_policies(spec, env):
+        mask = p.policy_type == "COLUMN_MASK"
         stmts.append(Statement("policies", "\n".join([
-            f"CREATE OR REPLACE POLICY filter_{rf.name} ON CATALOG {catalog}",
-            f"COMMENT {_lit(f'Row filter on {TAG_FILTER_KEY}={rf.name}. {MANAGED_BY}')}",
-            f"ROW FILTER {_gov(catalog, rf.function)}",
-            f"TO {_ident(ALL_USERS)}" + (f" EXCEPT {_principals(bypass)}" if bypass else ""),
+            f"CREATE OR REPLACE POLICY {p.name} ON CATALOG {catalog}",
+            f"COMMENT {_lit(p.comment)}",
+            f"COLUMN MASK {p.function}" if mask else f"ROW FILTER {p.function}",
+            f"TO {_ident(ALL_USERS)}" + (f" EXCEPT {_principals(list(p.exempt))}" if p.exempt else ""),
             "FOR TABLES",
-            f"MATCH COLUMNS has_tag_value({_lit(TAG_FILTER_KEY)}, {_lit(rf.name)}) AS col",
-            "USING COLUMNS (col)",
+            f"MATCH COLUMNS {p.match} AS col",
+            "ON COLUMN col" if mask else "USING COLUMNS (col)",
         ])))
     return stmts
 

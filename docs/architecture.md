@@ -115,6 +115,8 @@ flowchart LR
     S1 --> S2[silver orders<br/>dedupe, drop test + orphans]
     S2 --> GD[gold customer_360]
     GD --> Q[quality<br/>contract rules]
+    Q --> DR[drift<br/>spec vs information_schema]
+    Q --> PP[pii_propagation<br/>column lineage]
 ```
 
 The `lakehouse_pipeline` job runs as `gov-deployer`. Contract tables exist and are tagged before the
@@ -122,3 +124,15 @@ first row is written; transforms live in `src/transforms/<schema>/<table>.sql`.
 
 `bronze` (raw, engineers only) → `silver` (cleaned, conformed, masked + filtered) → `gold`
 (data products with contracts, masked + filtered). Bronze is protected by access, not masks.
+
+## Verification
+
+Both checks run at the end of the pipeline as `gov-deployer`, which owns the catalog and so sees every
+grant and policy ([ADR-0008](adr/0008-drift-and-pii-propagation.md)).
+
+- **Drift** compares the spec with `information_schema`: schemas, direct grants, contract columns,
+  engine-owned tags, ABAC policies, and per-column masks (which should not exist). Critical drift,
+  meaning anything that widens access or weakens protection, fails the run.
+- **PII propagation** walks `system.access.column_lineage` downstream from every `pii_type` or
+  matched `class.*` column. Bronze columns that feed a tagged column count as raw PII. Any silver or
+  gold column fed by PII without a protecting tag fails the run.

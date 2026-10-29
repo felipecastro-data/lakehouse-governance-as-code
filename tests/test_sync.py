@@ -66,7 +66,8 @@ def test_groups_are_created_through_the_account_api_and_assigned(spec):
 
 
 def test_ensure_catalog_runs_sql_on_a_serverless_warehouse(spec):
-    from gov_engine.catalog import STATEMENTS, WAREHOUSES, ensure_catalog
+    from gov_engine.catalog import ensure_catalog
+    from gov_engine.databricks_api import STATEMENTS, WAREHOUSES
 
     api = FakeApi({
         ("GET", WAREHOUSES): {"warehouses": [{"id": "classic"}, {"id": "sls", "enable_serverless_compute": True}]},
