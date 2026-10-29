@@ -136,7 +136,8 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
   - [x] Dev pipeline run 2026-10-29 with the `scorecard` task, all tasks green: 100% owned (3/3), 100% classified (24/24), 100% PII masked (9/9), 4 restricted tables (2 bronze, classified from lineage), 0 drift, 0 untagged PII.
   - [x] Views created in `gov_dev` by the account admin (`make audit-views`), owned by the admin; scorecard tables owned by `gov-deployer`. All 10 dashboard datasets return rows: 3 manual grant changes (the FR8 test grant, its revoke, the deployer's lineage grant), 6 restricted reads by people, 4 denied requests.
   - [x] Dashboard checked in the UI by the admin (2026-10-29); daily dev schedule unpaused so the trends build history.
-  - [ ] FR10 with a second test user in `gov-auditors`: dashboard and views readable, `system.access.audit` denied.
+  - [x] FR10 with a second test user (only in `gov-auditors`, 2026-10-29): `SELECT` on `gov_dev.audit.grant_changes` returns rows; `system.access.audit` → `INSUFFICIENT_PERMISSIONS` (no `USE SCHEMA` on `system.access`); `gov_dev.customer_silver.customers` → `INSUFFICIENT_PERMISSIONS` (no `USE SCHEMA`); dashboard opens with the viewer's credentials and every counter and chart renders.
+  - [ ] Table widgets re-rendered after the spec fix (tables need widget spec version 2; version 1 showed "Invalid widget definition").
 - [ ] **Phase 5 — Privacy & polish**: right-to-erasure, `make demo`, README screenshots, deploy workflow.
 
 ## 10. Decisions

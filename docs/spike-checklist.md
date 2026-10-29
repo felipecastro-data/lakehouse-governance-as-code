@@ -6,7 +6,7 @@ Warehouse 2X-Small). Test SQL: [`scripts/spike.sql`](../scripts/spike.sql).
 | # | Question | Result | Design impact |
 |---|---|---|---|
 | 1 | Can I create groups usable in UC grants? | ✅ UI creates groups "to account and workspace"; `GRANT USE CATALOG ... TO \`gov-spike\`` works | Group-only access as designed |
-| 2 | Can I invite a second user? | ⏳ Only 1 user today; UI check pending | Needed for the two-sided masking demo |
+| 2 | Can I invite a second user? | ✅ Settings → Identity and access → Users → Add user (2026-10-29); the user is account-level, so `gov-*` account groups accept it | Two-sided demos (FR10 auditor, masking/row filter) use this test user |
 | 3 | Service principal + OAuth secret for CI? | ✅ SP created via CLI; OAuth secret create/delete works | CI uses a **deploy service principal (OAuth M2M)**, not a PAT |
 | 4 | Create catalogs on default storage? | ✅ `CREATE CATALOG` works | Catalog per environment as designed |
 | 5 | System schemas enabled? | ✅ `access.audit` (6k events / 7 days), `table_lineage`, `column_lineage`, plus `billing`, `query`, `compute`, `lakeflow`, `tags`, … Audit lag ≈ 13 min | Audit + lineage views and scorecard are feasible |

@@ -630,18 +630,18 @@
               "widgetType": "bar",
               "encodings": {
                 "x": {
-                  "fieldName": "table_name",
-                  "scale": {
-                    "type": "categorical"
-                  },
-                  "displayName": "table name"
-                },
-                "y": {
                   "fieldName": "pii_columns",
                   "scale": {
                     "type": "quantitative"
                   },
                   "displayName": "PII columns"
+                },
+                "y": {
+                  "fieldName": "table_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "table name"
                 },
                 "color": {
                   "fieldName": "layer",
@@ -835,60 +835,32 @@
               }
             ],
             "spec": {
-              "version": 1,
+              "version": 2,
               "widgetType": "table",
               "encodings": {
                 "columns": [
                   {
                     "fieldName": "severity",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 0,
-                    "title": "severity",
                     "displayName": "severity"
                   },
                   {
                     "fieldName": "check_name",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 1,
-                    "title": "check_name",
                     "displayName": "check_name"
                   },
                   {
                     "fieldName": "kind",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 2,
-                    "title": "kind",
                     "displayName": "kind"
                   },
                   {
                     "fieldName": "securable",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 3,
-                    "title": "securable",
                     "displayName": "securable"
                   },
                   {
                     "fieldName": "detail",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 4,
-                    "title": "detail",
                     "displayName": "detail"
                   }
                 ]
               },
-              "itemsPerPage": 25,
-              "condensed": true,
-              "withRowNumber": false,
               "frame": {
                 "showTitle": true,
                 "title": "Findings in the latest run",
@@ -1155,78 +1127,40 @@
               }
             ],
             "spec": {
-              "version": 1,
+              "version": 2,
               "widgetType": "table",
               "encodings": {
                 "columns": [
                   {
                     "fieldName": "principal",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 0,
-                    "title": "principal",
                     "displayName": "principal"
                   },
                   {
                     "fieldName": "principal_type",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 1,
-                    "title": "principal_type",
                     "displayName": "principal_type"
                   },
                   {
                     "fieldName": "table_full_name",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 2,
-                    "title": "table_full_name",
                     "displayName": "table_full_name"
                   },
                   {
                     "fieldName": "layer",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 3,
-                    "title": "layer",
                     "displayName": "layer"
                   },
                   {
                     "fieldName": "classified_by",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 4,
-                    "title": "classified_by",
                     "displayName": "classified_by"
                   },
                   {
                     "fieldName": "reads",
-                    "type": "integer",
-                    "displayAs": "number",
-                    "visible": true,
-                    "order": 5,
-                    "title": "reads",
                     "displayName": "reads"
                   },
                   {
                     "fieldName": "last_read",
-                    "type": "datetime",
-                    "displayAs": "datetime",
-                    "visible": true,
-                    "order": 6,
-                    "title": "last_read",
                     "displayName": "last_read"
                   }
                 ]
               },
-              "itemsPerPage": 25,
-              "condensed": true,
-              "withRowNumber": false,
               "frame": {
                 "showTitle": true,
                 "title": "Reads of restricted tables (30d)",
@@ -1289,87 +1223,44 @@
               }
             ],
             "spec": {
-              "version": 1,
+              "version": 2,
               "widgetType": "table",
               "encodings": {
                 "columns": [
                   {
                     "fieldName": "event_time",
-                    "type": "datetime",
-                    "displayAs": "datetime",
-                    "visible": true,
-                    "order": 0,
-                    "title": "event_time",
                     "displayName": "event_time"
                   },
                   {
                     "fieldName": "actor",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 1,
-                    "title": "actor",
                     "displayName": "actor"
                   },
                   {
                     "fieldName": "securable_type",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 2,
-                    "title": "securable_type",
                     "displayName": "securable_type"
                   },
                   {
                     "fieldName": "securable",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 3,
-                    "title": "securable",
                     "displayName": "securable"
                   },
                   {
                     "fieldName": "principal",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 4,
-                    "title": "principal",
                     "displayName": "principal"
                   },
                   {
                     "fieldName": "added",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 5,
-                    "title": "added",
                     "displayName": "added"
                   },
                   {
                     "fieldName": "removed",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 6,
-                    "title": "removed",
                     "displayName": "removed"
                   },
                   {
                     "fieldName": "status_code",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 7,
-                    "title": "status_code",
                     "displayName": "status_code"
                   }
                 ]
               },
-              "itemsPerPage": 25,
-              "condensed": true,
-              "withRowNumber": false,
               "frame": {
                 "showTitle": true,
                 "title": "Manual grant changes",
@@ -1424,69 +1315,36 @@
               }
             ],
             "spec": {
-              "version": 1,
+              "version": 2,
               "widgetType": "table",
               "encodings": {
                 "columns": [
                   {
                     "fieldName": "event_time",
-                    "type": "datetime",
-                    "displayAs": "datetime",
-                    "visible": true,
-                    "order": 0,
-                    "title": "event_time",
                     "displayName": "event_time"
                   },
                   {
                     "fieldName": "principal",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 1,
-                    "title": "principal",
                     "displayName": "principal"
                   },
                   {
                     "fieldName": "action_name",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 2,
-                    "title": "action_name",
                     "displayName": "action_name"
                   },
                   {
                     "fieldName": "securable",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 3,
-                    "title": "securable",
                     "displayName": "securable"
                   },
                   {
                     "fieldName": "status_code",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 4,
-                    "title": "status_code",
                     "displayName": "status_code"
                   },
                   {
                     "fieldName": "error_message",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 5,
-                    "title": "error_message",
                     "displayName": "error_message"
                   }
                 ]
               },
-              "itemsPerPage": 25,
-              "condensed": true,
-              "withRowNumber": false,
               "frame": {
                 "showTitle": true,
                 "title": "Denied requests",
@@ -1553,96 +1411,48 @@
               }
             ],
             "spec": {
-              "version": 1,
+              "version": 2,
               "widgetType": "table",
               "encodings": {
                 "columns": [
                   {
                     "fieldName": "table_full_name",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 0,
-                    "title": "table_full_name",
                     "displayName": "table_full_name"
                   },
                   {
                     "fieldName": "layer",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 1,
-                    "title": "layer",
                     "displayName": "layer"
                   },
                   {
                     "fieldName": "owner",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 2,
-                    "title": "owner",
                     "displayName": "owner"
                   },
                   {
                     "fieldName": "classification",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 3,
-                    "title": "classification",
                     "displayName": "classification"
                   },
                   {
                     "fieldName": "classified_by",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 4,
-                    "title": "classified_by",
                     "displayName": "classified_by"
                   },
                   {
                     "fieldName": "data_contract",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 5,
-                    "title": "data_contract",
                     "displayName": "data_contract"
                   },
                   {
                     "fieldName": "columns",
-                    "type": "integer",
-                    "displayAs": "number",
-                    "visible": true,
-                    "order": 6,
-                    "title": "columns",
                     "displayName": "columns"
                   },
                   {
                     "fieldName": "classified_columns",
-                    "type": "integer",
-                    "displayAs": "number",
-                    "visible": true,
-                    "order": 7,
-                    "title": "classified_columns",
                     "displayName": "classified_columns"
                   },
                   {
                     "fieldName": "pii_columns",
-                    "type": "integer",
-                    "displayAs": "number",
-                    "visible": true,
-                    "order": 8,
-                    "title": "pii_columns",
                     "displayName": "pii_columns"
                   }
                 ]
               },
-              "itemsPerPage": 25,
-              "condensed": true,
-              "withRowNumber": false,
               "frame": {
                 "showTitle": true,
                 "title": "Table inventory",
