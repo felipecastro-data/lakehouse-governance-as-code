@@ -13,6 +13,7 @@ def clean_state(spec):
     grants = expand_grants(spec, "dev")
     tags = declared_tags(spec, "dev")
     state = {name: [] for name in QUERIES}
+    state["owner"] = [{"catalog_owner": "deployer-sp-id"}]
     state["schemas"] = [{"schema_name": s} for s in [*spec.layout.all_schemas(), "information_schema"]]
     for (securable, principal), privs in grants.items():
         kind, name = securable.split(" ", 1)
@@ -75,6 +76,13 @@ def test_manual_grant_is_critical_drift(spec, state):
         ("critical", "grant", "TABLE gov_dev.customer_silver.customers"),
     ]
     assert "individual user someone@example.com" in found[1].detail
+
+
+def test_grants_to_the_catalog_owner_are_not_drift(spec, state):
+    """The deployer owns the catalog; the account admin who owns audit.column_lineage grants it SELECT."""
+    state["table_privileges"].append({"table_schema": "audit", "table_name": "column_lineage",
+                                      "grantee": "deployer-sp-id", "privilege_type": "SELECT"})
+    assert drift(spec, state) == []
 
 
 def test_revoked_grant_is_a_warning(spec, state):

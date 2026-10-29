@@ -9,7 +9,7 @@ RAW, SILVER, GOLD = "gov_dev.customer_bronze.customers_raw", "gov_dev.customer_s
 def fake_query(edges, tags):
     def query(sql):
         if "column_lineage" in sql:
-            assert "target_table_catalog = 'gov_dev'" in sql
+            assert "FROM gov_dev.audit.column_lineage" in sql and "target_table_catalog = 'gov_dev'" in sql
             return [{"source_table_full_name": s.rsplit(".", 1)[0], "source_column_name": s.rsplit(".", 1)[1],
                      "target_table_full_name": t.rsplit(".", 1)[0], "target_column_name": t.rsplit(".", 1)[1]}
                     for s, t in edges]

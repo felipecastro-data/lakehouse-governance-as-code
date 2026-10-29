@@ -37,6 +37,7 @@ SYSTEM_SCHEMAS = ("information_schema",)
 
 QUERIES = {
     "schemas": "SELECT schema_name FROM {c}.information_schema.schemata",
+    "owner": "SELECT catalog_owner FROM {c}.information_schema.catalogs",
     "catalog_privileges": "SELECT grantee, privilege_type FROM {c}.information_schema.catalog_privileges "
                           "WHERE inherited_from = 'NONE'",
     "schema_privileges": "SELECT schema_name, grantee, privilege_type FROM {c}.information_schema.schema_privileges "
@@ -102,6 +103,9 @@ def _grants(spec: Spec, env: str, catalog: str, q: Callable[[str], list[dict]]) 
         (securable, spec.group(principal)): set(privs)
         for (securable, principal), privs in expand_grants(spec, env).items()
     }
+    # The catalog owner (the deployer) can grant itself anything, so a grant to it widens nothing. One is
+    # expected: SELECT on audit.column_lineage, granted by the account admin who owns that view (ADR-0008).
+    owners = {r["catalog_owner"] for r in q("owner")}
     actual: dict[tuple[str, str], set[str]] = defaultdict(set)
     for r in q("catalog_privileges"):
         actual[(f"CATALOG {catalog}", r["grantee"])].add(r["privilege_type"])
@@ -113,7 +117,7 @@ def _grants(spec: Spec, env: str, catalog: str, q: Callable[[str], list[dict]]) 
             actual[(f"TABLE {catalog}.{r['table_schema']}.{r['table_name']}", r["grantee"])].add(r["privilege_type"])
 
     findings = []
-    for key in sorted(declared.keys() | actual.keys()):
+    for key in sorted(declared.keys() | actual.keys() - {k for k in actual if k[1] in owners}):
         securable, grantee = key
         extra = actual.get(key, set()) - declared.get(key, set())
         missing = declared.get(key, set()) - actual.get(key, set())

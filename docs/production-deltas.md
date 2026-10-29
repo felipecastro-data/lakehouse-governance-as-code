@@ -15,7 +15,7 @@ deliberate trade-offs, not gaps in understanding.
 | Tag-driven policy | Native ABAC policies on governed tags (same as enterprise) | Policies at metastore/catalog level shared across workspaces |
 | Classification | Declared in contracts; policies also match system `class.*` tags | Automated data classification scans on every catalog, with steward review of new findings |
 | Drift response | Report and fail the pipeline; no auto-revoke | Same report as a scheduled job with alerts; reviewed `remediate` command per domain |
-| System table access | `gov-deployer` granted `system.access` by hand | Dedicated monitoring principal with `system` access, managed by the platform team |
+| System table access | Lineage through an admin-owned view in `audit`; `system.access` can't be granted on Free Edition | Metastore admin grants `system.access` to a dedicated monitoring principal; views still used for auditors |
 | Audit | System tables queried in-workspace | Audit logs also delivered to SIEM; alerts on privileged actions |
 | Data sharing | Out of scope | Delta Sharing with recipient-level row filters |
 | Change control | PR review + CI | PR review, CODEOWNERS per domain, prod deploy behind environment approval |

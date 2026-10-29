@@ -126,7 +126,8 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
   - [x] `gov_engine.drift`: schemas, direct grants, contract columns and types, engine-owned tags, ABAC policies and per-column masks vs `information_schema`; critical drift fails the `drift` task.
   - [x] `gov_engine.lineage`: walks `system.access.column_lineage` from tagged PII (and bronze PII inferred from lineage) and flags untagged silver and gold columns.
   - [x] Checked locally against `gov_dev` (2026-10-28): 26 lineage edges, 9 bronze columns inferred as PII, 0 untagged PII columns; schema, table and tag drift clean.
-  - [ ] Live acceptance run as `gov-deployer` (needs `system.access` access): a manual `GRANT` shows up as drift.
+  - [x] `system.access` can't be granted on (owned by "System user", account admins have no `MANAGE`), so lineage is read through `gov_dev.audit.column_lineage`, a view an account admin owns, with `SELECT` granted to `gov-deployer`.
+  - [ ] Live acceptance run as `gov-deployer`: a manual `GRANT` shows up as drift.
 - [ ] **Phase 4 — Observability**: audit + lineage views, governance scorecard dashboard.
 - [ ] **Phase 5 — Privacy & polish**: right-to-erasure, `make demo`, README screenshots, deploy workflow.
 

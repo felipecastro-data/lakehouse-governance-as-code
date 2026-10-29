@@ -9,8 +9,11 @@ Bronze is the raw landing zone. It has no contracts and no tags; its PII is cont
 (engineers only). Its columns become PII *sources* by inference: a bronze column that feeds a
 `pii_type` column is raw PII of that type, so anything else it feeds is checked too.
 
-Lineage reflects the latest run that wrote each target table (within LOOKBACK_DAYS), so a column a
-transform no longer reads stops being reported. System tables lag, so a change shows up a run later.
+Lineage is read from `<catalog>.audit.column_lineage`, a view over `system.access.column_lineage`
+owned by an account admin: only account admins can read `system.access`, and the deployer can't be
+granted it (ADR-0008). It reflects the latest run that wrote each target table (within LOOKBACK_DAYS),
+so a column a transform no longer reads stops being reported. System tables lag, so a change shows up
+a run later.
 """
 
 from __future__ import annotations
@@ -28,7 +31,7 @@ LINEAGE_SQL = """SELECT source_table_full_name, source_column_name, target_table
 FROM (
   SELECT *, max_by(coalesce(entity_run_id, event_id), event_time)
               OVER (PARTITION BY target_table_full_name) AS latest_run
-  FROM system.access.column_lineage
+  FROM {c}.audit.column_lineage
   WHERE target_table_catalog = '{c}' AND source_table_catalog = '{c}' AND source_column_name IS NOT NULL
     AND event_date >= date_sub(current_date(), {days})
 )

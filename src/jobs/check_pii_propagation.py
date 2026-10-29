@@ -1,6 +1,6 @@
 """Databricks job entrypoint: flag curated columns fed by PII (column lineage) that carry no pii_type tag.
 
-Needs SELECT on system.access (granted to the deployer by an account admin; docs/adr/0008).
+Reads lineage from <catalog>.audit.column_lineage, a view an account admin owns (docs/adr/0008).
 System tables lag, so lineage from this run's writes is usually checked on the next run.
 """
 
