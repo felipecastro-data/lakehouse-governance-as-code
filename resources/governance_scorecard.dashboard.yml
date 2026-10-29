@@ -13,4 +13,4 @@ resources:
       permissions:
         # Must match access_policy.yml principals.auditors (enforced by tests/test_consistency.py).
         - group_name: gov-auditors
-          level: CAN_VIEW
+          level: CAN_READ  # dashboards: CAN_READ is "Can view"

@@ -87,5 +87,5 @@ def test_dashboard_resource_is_for_auditors_without_embedded_credentials(spec):
     dash = res["resources"]["dashboards"]["governance_scorecard"]
     assert dash["embed_credentials"] is False, "viewers must query with their own grants"
     assert (dash["dataset_catalog"], dash["dataset_schema"]) == ("${var.catalog}", "audit")
-    assert dash["permissions"] == [{"group_name": spec.group("auditors"), "level": "CAN_VIEW"}]
+    assert dash["permissions"] == [{"group_name": spec.group("auditors"), "level": "CAN_READ"}]
     assert (ROOT / "resources" / dash["file_path"]).resolve().exists()

@@ -132,7 +132,7 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
 - [ ] **Phase 4 — Observability**: audit + lineage views, governance scorecard dashboard ([ADR-0009](adr/0009-audit-views-and-scorecard.md)).
   - [x] Audit views in `audit` (`column_lineage`, `table_access`, `grant_changes`, `policy_changes`, `access_denied`): SQL in `src/audit/views.sql`, created and owned by an account admin (`make audit-views`); bodies checked against `gov_dev` system tables (2026-10-29).
   - [x] `gov_engine.scorecard` + pipeline task `scorecard` (`run_if: ALL_DONE`) writing `audit.scorecard`, `audit.findings`, `audit.table_inventory`.
-  - [x] AI/BI dashboard `governance_scorecard` in the bundle; `gov-auditors` `CAN_VIEW`, no embedded credentials.
+  - [x] AI/BI dashboard `governance_scorecard` in the bundle; `gov-auditors` `CAN_READ` ("Can view"), no embedded credentials.
   - [ ] Views created in `gov_dev`; dev pipeline run with the `scorecard` task; dashboard checked (FR10, FR11).
 - [ ] **Phase 5 — Privacy & polish**: right-to-erasure, `make demo`, README screenshots, deploy workflow.
 

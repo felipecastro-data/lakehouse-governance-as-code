@@ -72,7 +72,7 @@ catalog and `dataset_schema: audit`. It has two pages:
   grant changes, denied requests and the table inventory.
 
 The dashboard uses `embed_credentials: false`, so every viewer queries with their own grants. The
-bundle gives `gov-auditors` `CAN_VIEW`. Restricted access and grant changes are computed when a viewer
+bundle gives `gov-auditors` `CAN_READ` ("Can view"). Restricted access and grant changes are computed when a viewer
 queries, by joining the admin-owned views with `table_inventory`. They are not stored in `scorecard`,
 because the deployer can't read the views.
 
