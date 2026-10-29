@@ -30,7 +30,8 @@ def main() -> None:
     def query(sql: str) -> list[dict]:
         return [row.asDict(recursive=True) for row in spark.sql(sql).collect()]
 
-    sys.exit(report_propagation(find_untagged_pii(spec, args.env, query)))
+    if report_propagation(find_untagged_pii(spec, args.env, query)):
+        sys.exit(1)  # sys.exit(0) also fails a serverless task, so exit only on failure
 
 
 if __name__ == "__main__":
