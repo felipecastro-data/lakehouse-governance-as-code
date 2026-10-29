@@ -129,7 +129,7 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
   - [x] `system.access` can't be granted on (owned by "System user", account admins have no `MANAGE`), so lineage is read through `gov_dev.audit.column_lineage`, a view an account admin owns, with `SELECT` granted to `gov-deployer`.
   - [x] Dev pipeline run 2026-10-28 as `gov-deployer`, all tasks green: `drift` 0 critical / 0 warning (full visibility as catalog owner), `pii_propagation` 26 lineage edges, 9 bronze PII columns inferred, 0 untagged PII columns.
   - [x] FR8 acceptance (2026-10-28): a manual `GRANT SELECT ON VIEW gov_dev.audit.column_lineage TO gov-analysts-amer` failed the next run's `drift` task with `[critical] grant TABLE gov_dev.audit.column_lineage: undeclared SELECT to gov-analysts-amer`; every other task passed. The grant was then revoked.
-- [ ] **Phase 4 — Observability**: audit + lineage views, governance scorecard dashboard ([ADR-0009](adr/0009-audit-views-and-scorecard.md)).
+- [x] **Phase 4 — Observability**: audit + lineage views, governance scorecard dashboard ([ADR-0009](adr/0009-audit-views-and-scorecard.md)).
   - [x] Audit views in `audit` (`column_lineage`, `table_access`, `grant_changes`, `policy_changes`, `access_denied`): SQL in `src/audit/views.sql`, created and owned by an account admin (`make audit-views`); bodies checked against `gov_dev` system tables (2026-10-29).
   - [x] `gov_engine.scorecard` + pipeline task `scorecard` (`run_if: ALL_DONE`) writing `audit.scorecard`, `audit.findings`, `audit.table_inventory`.
   - [x] AI/BI dashboard `governance_scorecard` in the bundle; `gov-auditors` `CAN_READ` ("Can view"), no embedded credentials.
@@ -137,7 +137,7 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
   - [x] Views created in `gov_dev` by the account admin (`make audit-views`), owned by the admin; scorecard tables owned by `gov-deployer`. All 10 dashboard datasets return rows: 3 manual grant changes (the FR8 test grant, its revoke, the deployer's lineage grant), 6 restricted reads by people, 4 denied requests.
   - [x] Dashboard checked in the UI by the admin (2026-10-29); daily dev schedule unpaused so the trends build history.
   - [x] FR10 with a second test user (only in `gov-auditors`, 2026-10-29): `SELECT` on `gov_dev.audit.grant_changes` returns rows; `system.access.audit` → `INSUFFICIENT_PERMISSIONS` (no `USE SCHEMA` on `system.access`); `gov_dev.customer_silver.customers` → `INSUFFICIENT_PERMISSIONS` (no `USE SCHEMA`); dashboard opens with the viewer's credentials and every counter and chart renders.
-  - [ ] Table widgets re-rendered after the spec fix (tables need widget spec version 2; version 1 showed "Invalid widget definition").
+  - [x] Table widgets re-rendered after the spec fix (tables need widget spec version 2; version 1 showed "Invalid widget definition").
 - [ ] **Phase 5 — Privacy & polish**: right-to-erasure, `make demo`, README screenshots, deploy workflow.
 
 ## 10. Decisions
