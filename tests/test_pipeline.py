@@ -72,3 +72,13 @@ def test_pipeline_ends_with_drift_and_pii_propagation_checks():
         assert tasks[key]["depends_on"] == [{"task_key": "quality"}]
         assert tasks[key]["spark_python_task"]["python_file"] == f"../src/jobs/{script}"
         assert (ROOT / "src" / "jobs" / script).exists()
+
+
+def test_scorecard_runs_after_the_checks_even_when_they_fail():
+    tasks = yaml.safe_load((ROOT / "resources" / "lakehouse_pipeline.job.yml").read_text())
+    tasks = {t["task_key"]: t for t in tasks["resources"]["jobs"]["lakehouse_pipeline"]["tasks"]}
+    scorecard = tasks["scorecard"]
+    assert scorecard["depends_on"] == [{"task_key": "drift"}, {"task_key": "pii_propagation"}]
+    assert scorecard["run_if"] == "ALL_DONE"
+    assert scorecard["spark_python_task"]["python_file"] == "../src/jobs/build_scorecard.py"
+    assert "{{job.run_id}}" in scorecard["spark_python_task"]["parameters"]

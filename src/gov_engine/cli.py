@@ -1,17 +1,21 @@
-"""Command line: validate the spec, preview SQL, print the access matrix, check drift and PII lineage."""
+"""Command line: validate the spec, preview SQL, print the access matrix, check drift and PII lineage,
+measure the scorecard and create the audit views."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import sys
+from pathlib import Path
 
+from gov_engine.audit import create_audit_views
 from gov_engine.catalog import ensure_catalog
 from gov_engine.databricks_api import cli_api, pick_warehouse, query_rows
 from gov_engine.drift import detect_drift
 from gov_engine.identity import sync_groups
 from gov_engine.lineage import find_untagged_pii
 from gov_engine.render import PHASES, render_access_matrix, render_plan
+from gov_engine.scorecard import build_scorecard
 from gov_engine.spec import SpecError, load_spec
 from gov_engine.tag_policies import desired_tag_policies, sync_tag_policies
 
@@ -42,11 +46,18 @@ def main(argv: list[str] | None = None) -> int:
     catalog.add_argument("--profile", help="Databricks CLI profile")
 
     for name, help_text in (("drift", "compare declared and actual state; exit 1 on critical drift"),
-                            ("pii-propagation", "flag untagged columns fed by PII (column lineage); exit 1 if any")):
+                            ("pii-propagation", "flag untagged columns fed by PII (column lineage); exit 1 if any"),
+                            ("scorecard", "print the governance scorecard (no write; the pipeline records it)")):
         cmd = sub.add_parser(name, help=f"{help_text}. Run as the catalog owner to see every grant and policy")
         cmd.add_argument("--env", required=True)
         cmd.add_argument("--warehouse-id", help="default: first serverless SQL warehouse")
         cmd.add_argument("--profile", help="Databricks CLI profile")
+
+    audit = sub.add_parser("audit-views", help="create the audit views over system tables. Run as an account admin")
+    audit.add_argument("--env", required=True)
+    audit.add_argument("--warehouse-id", help="default: first serverless SQL warehouse")
+    audit.add_argument("--dry-run", action="store_true")
+    audit.add_argument("--profile", help="Databricks CLI profile")
 
     sub.add_parser("principals", help="print group names, one per line")
 
@@ -78,7 +89,11 @@ def main(argv: list[str] | None = None) -> int:
         sync_tag_policies(spec, cli_api(args.profile), dry_run=args.dry_run)
     elif args.command == "ensure-catalog":
         ensure_catalog(spec, args.env, cli_api(args.profile), args.warehouse_id, dry_run=args.dry_run)
-    elif args.command in ("drift", "pii-propagation"):
+    elif args.command == "audit-views":
+        api = cli_api(args.profile)
+        create_audit_views(spec, args.env, Path(args.root), api, args.warehouse_id or pick_warehouse(api),
+                           dry_run=args.dry_run)
+    elif args.command in ("drift", "pii-propagation", "scorecard"):
         api = cli_api(args.profile)
         warehouse = args.warehouse_id or pick_warehouse(api)
 
@@ -87,6 +102,9 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "drift":
             return report_drift(detect_drift(spec, args.env, query))
+        if args.command == "scorecard":
+            print("\n".join(map(str, build_scorecard(spec, args.env, query).metrics)))
+            return 0
         return report_propagation(find_untagged_pii(spec, args.env, query))
     elif args.command == "principals":
         print("\n".join(spec.access.principals.values()))

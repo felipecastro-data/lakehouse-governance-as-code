@@ -13,6 +13,10 @@ include:
 variables:
   catalog:
     description: Unity Catalog catalog for the target (must match governance/layout.yml).
+  warehouse_id:
+    description: SQL warehouse the governance scorecard dashboard runs on.
+    lookup:
+      warehouse: Serverless Starter Warehouse
 
 # No `mode:` on purpose: development mode prefixes schema names, which would break the
 # policy's schema selectors. Behaviour is set explicitly with presets instead.

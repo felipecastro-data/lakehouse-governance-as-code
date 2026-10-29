@@ -1,0 +1,1371 @@
+{
+  "datasets": [
+    {
+      "name": "kpis",
+      "displayName": "Latest scorecard",
+      "queryLines": [
+        "WITH latest AS (SELECT * FROM scorecard WHERE run_time = (SELECT max(run_time) FROM scorecard))\n",
+        "SELECT\n",
+        "  max(CASE WHEN metric = 'pct_owned' THEN value END)      AS pct_owned,\n",
+        "  max(CASE WHEN metric = 'pct_classified' THEN value END) AS pct_classified,\n",
+        "  max(CASE WHEN metric = 'pct_pii_masked' THEN value END) AS pct_pii_masked,\n",
+        "  max(CASE WHEN metric = 'drift_critical' THEN value END) AS drift_critical,\n",
+        "  max(CASE WHEN metric = 'drift_warning' THEN value END)  AS drift_warning,\n",
+        "  max(CASE WHEN metric = 'untagged_pii' THEN value END)   AS untagged_pii,\n",
+        "  max(run_time)                                           AS measured_at\n",
+        "FROM latest"
+      ]
+    },
+    {
+      "name": "access_kpis",
+      "displayName": "Access in the last 30 days",
+      "queryLines": [
+        "SELECT\n",
+        "  (SELECT count(*) FROM grant_changes WHERE NOT by_engine AND event_date >= current_date() - INTERVAL 30 DAYS) AS manual_grant_changes,\n",
+        "  (SELECT count(*) FROM table_access a JOIN table_inventory i USING (table_full_name)\n",
+        "    WHERE i.classification = 'restricted' AND a.access = 'read' AND NOT a.by_pipeline AND a.event_date >= current_date() - INTERVAL 30 DAYS) AS restricted_reads,\n",
+        "  (SELECT count(*) FROM access_denied WHERE event_date >= current_date() - INTERVAL 30 DAYS) AS denied_requests"
+      ]
+    },
+    {
+      "name": "coverage_trend",
+      "displayName": "Coverage trend",
+      "queryLines": [
+        "SELECT run_time, metric, value FROM scorecard WHERE metric IN ('pct_owned', 'pct_classified', 'pct_pii_masked')"
+      ]
+    },
+    {
+      "name": "issue_trend",
+      "displayName": "Drift and PII trend",
+      "queryLines": [
+        "SELECT run_time, metric, value FROM scorecard WHERE metric IN ('drift_critical', 'drift_warning', 'untagged_pii')"
+      ]
+    },
+    {
+      "name": "latest_findings",
+      "displayName": "Findings in the latest run",
+      "queryLines": [
+        "SELECT severity, check_name, kind, securable, detail\n",
+        "FROM findings\n",
+        "WHERE run_id = (SELECT max_by(run_id, run_time) FROM scorecard)\n",
+        "ORDER BY severity, check_name, kind, securable"
+      ]
+    },
+    {
+      "name": "grant_changes_daily",
+      "displayName": "Grant changes per day",
+      "queryLines": [
+        "SELECT event_date, IF(by_engine, 'gov_engine apply', 'manual') AS source, count(*) AS changes\n",
+        "FROM grant_changes\n",
+        "WHERE event_date >= current_date() - INTERVAL 30 DAYS\n",
+        "GROUP BY ALL"
+      ]
+    },
+    {
+      "name": "manual_grant_changes",
+      "displayName": "Manual grant changes",
+      "queryLines": [
+        "SELECT event_time, actor, securable_type, securable, principal,\n",
+        "       array_join(added, ', ') AS added, array_join(removed, ', ') AS removed, status_code\n",
+        "FROM grant_changes\n",
+        "WHERE NOT by_engine\n",
+        "ORDER BY event_time DESC\n",
+        "LIMIT 500"
+      ]
+    },
+    {
+      "name": "restricted_access",
+      "displayName": "Reads of restricted tables",
+      "queryLines": [
+        "SELECT a.principal, IF(a.by_pipeline, 'pipeline', 'person') AS principal_type, a.table_full_name,\n",
+        "       i.layer, i.classified_by, count(*) AS reads, max(a.event_time) AS last_read\n",
+        "FROM table_access a JOIN table_inventory i USING (table_full_name)\n",
+        "WHERE i.classification = 'restricted' AND a.access = 'read' AND a.event_date >= current_date() - INTERVAL 30 DAYS\n",
+        "GROUP BY ALL\n",
+        "ORDER BY reads DESC"
+      ]
+    },
+    {
+      "name": "access_denied",
+      "displayName": "Denied requests",
+      "queryLines": [
+        "SELECT event_time, principal, action_name, securable, status_code, error_message\n",
+        "FROM access_denied\n",
+        "ORDER BY event_time DESC\n",
+        "LIMIT 500"
+      ]
+    },
+    {
+      "name": "inventory",
+      "displayName": "Table inventory",
+      "queryLines": [
+        "SELECT table_full_name, layer, owner, classification, classified_by, data_contract,\n",
+        "       columns, classified_columns, pii_columns\n",
+        "FROM table_inventory\n",
+        "ORDER BY layer, table_full_name"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "scorecard",
+      "displayName": "Scorecard",
+      "layout": [
+        {
+          "widget": {
+            "name": "title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Governance scorecard\n",
+                "Measured by the pipeline's `scorecard` task as the catalog owner, after the drift and PII propagation checks. Coverage is for the curated layers (silver, gold); bronze is protected by layer. See docs/adr/0009."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "pct_owned",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpis",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pct_owned",
+                      "expression": "`pct_owned`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pct_owned",
+                  "displayName": "% owned"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "% owned",
+                "showDescription": true,
+                "description": "Silver/gold tables with an owner group"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "pct_classified",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpis",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pct_classified",
+                      "expression": "`pct_classified`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pct_classified",
+                  "displayName": "% classified"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "% classified",
+                "showDescription": true,
+                "description": "Silver/gold columns with a classification tag"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "pct_pii_masked",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpis",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pct_pii_masked",
+                      "expression": "`pct_pii_masked`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pct_pii_masked",
+                  "displayName": "% PII masked"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "% PII masked",
+                "showDescription": true,
+                "description": "PII columns covered by a live mask policy"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "drift_critical",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpis",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "drift_critical",
+                      "expression": "`drift_critical`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "drift_critical",
+                  "displayName": "Critical drift"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Critical drift",
+                "showDescription": true,
+                "description": "Undeclared access or weakened protection"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "drift_warning",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpis",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "drift_warning",
+                      "expression": "`drift_warning`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "drift_warning",
+                  "displayName": "Drift warnings"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Drift warnings",
+                "showDescription": true,
+                "description": "Missing grants, contract mismatches"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "untagged_pii",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpis",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "untagged_pii",
+                      "expression": "`untagged_pii`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "untagged_pii",
+                  "displayName": "Untagged PII"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Untagged PII",
+                "showDescription": true,
+                "description": "Columns fed by PII without a pii_type tag"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "manual_grant_changes",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "access_kpis",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "manual_grant_changes",
+                      "expression": "`manual_grant_changes`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "manual_grant_changes",
+                  "displayName": "Manual grant changes (30d)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Manual grant changes (30d)",
+                "showDescription": true,
+                "description": "GRANT/REVOKE not made by gov_engine"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "restricted_reads",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "access_kpis",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "restricted_reads",
+                      "expression": "`restricted_reads`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "restricted_reads",
+                  "displayName": "Restricted reads by people (30d)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Restricted reads by people (30d)",
+                "showDescription": true,
+                "description": "Reads of restricted tables outside the pipeline"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "denied_requests",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "access_kpis",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "denied_requests",
+                      "expression": "`denied_requests`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "denied_requests",
+                  "displayName": "Denied requests (30d)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Denied requests (30d)",
+                "showDescription": true,
+                "description": "Unity Catalog refused the request"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "coverage_trend",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "coverage_trend",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "run_time",
+                      "expression": "`run_time`"
+                    },
+                    {
+                      "name": "value",
+                      "expression": "`value`"
+                    },
+                    {
+                      "name": "metric",
+                      "expression": "`metric`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "run_time",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "run time"
+                },
+                "y": {
+                  "fieldName": "value",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "%"
+                },
+                "color": {
+                  "fieldName": "metric",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "metric"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Coverage per run",
+                "showDescription": true,
+                "description": "Percent"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "issue_trend",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "issue_trend",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "run_time",
+                      "expression": "`run_time`"
+                    },
+                    {
+                      "name": "value",
+                      "expression": "`value`"
+                    },
+                    {
+                      "name": "metric",
+                      "expression": "`metric`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "run_time",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "run time"
+                },
+                "y": {
+                  "fieldName": "value",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "findings"
+                },
+                "color": {
+                  "fieldName": "metric",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "metric"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Drift and untagged PII per run",
+                "showDescription": true,
+                "description": "Findings"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 8,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "latest_findings",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "latest_findings",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "severity",
+                      "expression": "`severity`"
+                    },
+                    {
+                      "name": "check_name",
+                      "expression": "`check_name`"
+                    },
+                    {
+                      "name": "kind",
+                      "expression": "`kind`"
+                    },
+                    {
+                      "name": "securable",
+                      "expression": "`securable`"
+                    },
+                    {
+                      "name": "detail",
+                      "expression": "`detail`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "severity",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 0,
+                    "title": "severity",
+                    "displayName": "severity"
+                  },
+                  {
+                    "fieldName": "check_name",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 1,
+                    "title": "check_name",
+                    "displayName": "check_name"
+                  },
+                  {
+                    "fieldName": "kind",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 2,
+                    "title": "kind",
+                    "displayName": "kind"
+                  },
+                  {
+                    "fieldName": "securable",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 3,
+                    "title": "securable",
+                    "displayName": "securable"
+                  },
+                  {
+                    "fieldName": "detail",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 4,
+                    "title": "detail",
+                    "displayName": "detail"
+                  }
+                ]
+              },
+              "itemsPerPage": 25,
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Findings in the latest run",
+                "showDescription": true,
+                "description": "Critical findings fail the pipeline's drift or pii_propagation task"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 14,
+            "width": 6,
+            "height": 7
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "access",
+      "displayName": "Access and changes",
+      "layout": [
+        {
+          "widget": {
+            "name": "grant_changes_daily",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "grant_changes_daily",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "event_date",
+                      "expression": "`event_date`"
+                    },
+                    {
+                      "name": "changes",
+                      "expression": "`changes`"
+                    },
+                    {
+                      "name": "source",
+                      "expression": "`source`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "event_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "event date"
+                },
+                "y": {
+                  "fieldName": "changes",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "changes"
+                },
+                "color": {
+                  "fieldName": "source",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "source"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Grant changes per day (30d)",
+                "showDescription": true,
+                "description": "gov_engine re-applies the declared grants on every run"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "restricted_access",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "restricted_access",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "principal",
+                      "expression": "`principal`"
+                    },
+                    {
+                      "name": "principal_type",
+                      "expression": "`principal_type`"
+                    },
+                    {
+                      "name": "table_full_name",
+                      "expression": "`table_full_name`"
+                    },
+                    {
+                      "name": "layer",
+                      "expression": "`layer`"
+                    },
+                    {
+                      "name": "classified_by",
+                      "expression": "`classified_by`"
+                    },
+                    {
+                      "name": "reads",
+                      "expression": "`reads`"
+                    },
+                    {
+                      "name": "last_read",
+                      "expression": "`last_read`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "principal",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 0,
+                    "title": "principal",
+                    "displayName": "principal"
+                  },
+                  {
+                    "fieldName": "principal_type",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 1,
+                    "title": "principal_type",
+                    "displayName": "principal_type"
+                  },
+                  {
+                    "fieldName": "table_full_name",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 2,
+                    "title": "table_full_name",
+                    "displayName": "table_full_name"
+                  },
+                  {
+                    "fieldName": "layer",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 3,
+                    "title": "layer",
+                    "displayName": "layer"
+                  },
+                  {
+                    "fieldName": "classified_by",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 4,
+                    "title": "classified_by",
+                    "displayName": "classified_by"
+                  },
+                  {
+                    "fieldName": "reads",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 5,
+                    "title": "reads",
+                    "displayName": "reads"
+                  },
+                  {
+                    "fieldName": "last_read",
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 6,
+                    "title": "last_read",
+                    "displayName": "last_read"
+                  }
+                ]
+              },
+              "itemsPerPage": 25,
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Reads of restricted tables (30d)",
+                "showDescription": true,
+                "description": "From table lineage; bronze is classified from column lineage"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "manual_grant_changes_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "manual_grant_changes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "event_time",
+                      "expression": "`event_time`"
+                    },
+                    {
+                      "name": "actor",
+                      "expression": "`actor`"
+                    },
+                    {
+                      "name": "securable_type",
+                      "expression": "`securable_type`"
+                    },
+                    {
+                      "name": "securable",
+                      "expression": "`securable`"
+                    },
+                    {
+                      "name": "principal",
+                      "expression": "`principal`"
+                    },
+                    {
+                      "name": "added",
+                      "expression": "`added`"
+                    },
+                    {
+                      "name": "removed",
+                      "expression": "`removed`"
+                    },
+                    {
+                      "name": "status_code",
+                      "expression": "`status_code`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "event_time",
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 0,
+                    "title": "event_time",
+                    "displayName": "event_time"
+                  },
+                  {
+                    "fieldName": "actor",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 1,
+                    "title": "actor",
+                    "displayName": "actor"
+                  },
+                  {
+                    "fieldName": "securable_type",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 2,
+                    "title": "securable_type",
+                    "displayName": "securable_type"
+                  },
+                  {
+                    "fieldName": "securable",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 3,
+                    "title": "securable",
+                    "displayName": "securable"
+                  },
+                  {
+                    "fieldName": "principal",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 4,
+                    "title": "principal",
+                    "displayName": "principal"
+                  },
+                  {
+                    "fieldName": "added",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 5,
+                    "title": "added",
+                    "displayName": "added"
+                  },
+                  {
+                    "fieldName": "removed",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 6,
+                    "title": "removed",
+                    "displayName": "removed"
+                  },
+                  {
+                    "fieldName": "status_code",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 7,
+                    "title": "status_code",
+                    "displayName": "status_code"
+                  }
+                ]
+              },
+              "itemsPerPage": 25,
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Manual grant changes",
+                "showDescription": true,
+                "description": "Every GRANT/REVOKE on the catalog not made by gov_engine"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "access_denied",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "access_denied",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "event_time",
+                      "expression": "`event_time`"
+                    },
+                    {
+                      "name": "principal",
+                      "expression": "`principal`"
+                    },
+                    {
+                      "name": "action_name",
+                      "expression": "`action_name`"
+                    },
+                    {
+                      "name": "securable",
+                      "expression": "`securable`"
+                    },
+                    {
+                      "name": "status_code",
+                      "expression": "`status_code`"
+                    },
+                    {
+                      "name": "error_message",
+                      "expression": "`error_message`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "event_time",
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 0,
+                    "title": "event_time",
+                    "displayName": "event_time"
+                  },
+                  {
+                    "fieldName": "principal",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 1,
+                    "title": "principal",
+                    "displayName": "principal"
+                  },
+                  {
+                    "fieldName": "action_name",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 2,
+                    "title": "action_name",
+                    "displayName": "action_name"
+                  },
+                  {
+                    "fieldName": "securable",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 3,
+                    "title": "securable",
+                    "displayName": "securable"
+                  },
+                  {
+                    "fieldName": "status_code",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 4,
+                    "title": "status_code",
+                    "displayName": "status_code"
+                  },
+                  {
+                    "fieldName": "error_message",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 5,
+                    "title": "error_message",
+                    "displayName": "error_message"
+                  }
+                ]
+              },
+              "itemsPerPage": 25,
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Denied requests",
+                "showDescription": true,
+                "description": "Requests on the catalog that Unity Catalog refused"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "inventory",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "inventory",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "table_full_name",
+                      "expression": "`table_full_name`"
+                    },
+                    {
+                      "name": "layer",
+                      "expression": "`layer`"
+                    },
+                    {
+                      "name": "owner",
+                      "expression": "`owner`"
+                    },
+                    {
+                      "name": "classification",
+                      "expression": "`classification`"
+                    },
+                    {
+                      "name": "classified_by",
+                      "expression": "`classified_by`"
+                    },
+                    {
+                      "name": "data_contract",
+                      "expression": "`data_contract`"
+                    },
+                    {
+                      "name": "columns",
+                      "expression": "`columns`"
+                    },
+                    {
+                      "name": "classified_columns",
+                      "expression": "`classified_columns`"
+                    },
+                    {
+                      "name": "pii_columns",
+                      "expression": "`pii_columns`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "table_full_name",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 0,
+                    "title": "table_full_name",
+                    "displayName": "table_full_name"
+                  },
+                  {
+                    "fieldName": "layer",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 1,
+                    "title": "layer",
+                    "displayName": "layer"
+                  },
+                  {
+                    "fieldName": "owner",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 2,
+                    "title": "owner",
+                    "displayName": "owner"
+                  },
+                  {
+                    "fieldName": "classification",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 3,
+                    "title": "classification",
+                    "displayName": "classification"
+                  },
+                  {
+                    "fieldName": "classified_by",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 4,
+                    "title": "classified_by",
+                    "displayName": "classified_by"
+                  },
+                  {
+                    "fieldName": "data_contract",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 5,
+                    "title": "data_contract",
+                    "displayName": "data_contract"
+                  },
+                  {
+                    "fieldName": "columns",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 6,
+                    "title": "columns",
+                    "displayName": "columns"
+                  },
+                  {
+                    "fieldName": "classified_columns",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 7,
+                    "title": "classified_columns",
+                    "displayName": "classified_columns"
+                  },
+                  {
+                    "fieldName": "pii_columns",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 8,
+                    "title": "pii_columns",
+                    "displayName": "pii_columns"
+                  }
+                ]
+              },
+              "itemsPerPage": 25,
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Table inventory",
+                "showDescription": true,
+                "description": "Owner and classification per domain table, from the latest run"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 19,
+            "width": 6,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    }
+  ]
+}

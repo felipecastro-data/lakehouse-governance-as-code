@@ -3,7 +3,7 @@ PY  ?= .venv/bin/python
 # Don't rely on the editable-install .pth (macOS can flag it hidden, and Python 3.13+ skips hidden .pth files).
 export PYTHONPATH := src
 
-.PHONY: setup lint test validate plan matrix docs groups tags catalog drift pii bundle-validate deploy apply
+.PHONY: setup lint test validate plan matrix docs groups tags catalog drift pii scorecard audit-views bundle-validate deploy apply
 
 setup:            ## create .venv and install dev dependencies
 	python3 -m venv .venv && $(PY) -m pip install -q -e ".[dev]"
@@ -41,6 +41,12 @@ drift:            ## declared vs actual state in ENV; complete only as the catal
 
 pii:              ## untagged columns fed by PII in ENV (column lineage)
 	$(PY) -m gov_engine pii-propagation --env $(ENV)
+
+scorecard:        ## print the governance scorecard for ENV; complete only as the catalog owner
+	$(PY) -m gov_engine scorecard --env $(ENV)
+
+audit-views:      ## create the audit views over system tables in ENV (account admin, once per env)
+	$(PY) -m gov_engine audit-views --env $(ENV)
 
 bundle-validate:
 	databricks bundle validate -t $(ENV)

@@ -117,6 +117,8 @@ flowchart LR
     GD --> Q[quality<br/>contract rules]
     Q --> DR[drift<br/>spec vs information_schema]
     Q --> PP[pii_propagation<br/>column lineage]
+    DR --> SC[scorecard<br/>audit tables]
+    PP --> SC
 ```
 
 The `lakehouse_pipeline` job runs as `gov-deployer`. Contract tables exist and are tagged before the
@@ -136,3 +138,25 @@ grant and policy ([ADR-0008](adr/0008-drift-and-pii-propagation.md)).
 - **PII propagation** walks `system.access.column_lineage` downstream from every `pii_type` or
   matched `class.*` column. Bronze columns that feed a tagged column count as raw PII. Any silver or
   gold column fed by PII without a protecting tag fails the run.
+
+## Observability
+
+Auditors read curated views in `audit` and never `system.*` ([ADR-0009](adr/0009-audit-views-and-scorecard.md)).
+
+```mermaid
+flowchart LR
+    SYS[(system.access<br/>audit · table_lineage · column_lineage)] --> V["audit views<br/>owned by an account admin"]
+    IS[(information_schema<br/>seen fully by the catalog owner)] --> T["scorecard task<br/>as gov-deployer"]
+    T --> ST["audit.scorecard · findings<br/>table_inventory"]
+    V --> D["Governance scorecard dashboard<br/>viewer's own credentials"]
+    ST --> D
+    AUD["gov-auditors<br/>SELECT on audit schema"] --> D
+```
+
+- **Audit views** (`table_access`, `grant_changes`, `policy_changes`, `access_denied`, `column_lineage`)
+  read system tables with their owner's access. An account admin creates them with `make audit-views`.
+- **The `scorecard` task** runs after both checks, even if they fail. It writes coverage metrics
+  (% owned, % classified, % PII masked), drift and PII findings, and a table inventory with
+  classifications.
+- **The dashboard** joins both sources at query time: reads of restricted tables, and grant changes
+  that gov_engine did not make.

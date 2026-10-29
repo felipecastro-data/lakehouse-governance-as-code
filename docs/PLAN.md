@@ -129,7 +129,11 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
   - [x] `system.access` can't be granted on (owned by "System user", account admins have no `MANAGE`), so lineage is read through `gov_dev.audit.column_lineage`, a view an account admin owns, with `SELECT` granted to `gov-deployer`.
   - [x] Dev pipeline run 2026-10-28 as `gov-deployer`, all tasks green: `drift` 0 critical / 0 warning (full visibility as catalog owner), `pii_propagation` 26 lineage edges, 9 bronze PII columns inferred, 0 untagged PII columns.
   - [x] FR8 acceptance (2026-10-28): a manual `GRANT SELECT ON VIEW gov_dev.audit.column_lineage TO gov-analysts-amer` failed the next run's `drift` task with `[critical] grant TABLE gov_dev.audit.column_lineage: undeclared SELECT to gov-analysts-amer`; every other task passed. The grant was then revoked.
-- [ ] **Phase 4 — Observability**: audit + lineage views, governance scorecard dashboard.
+- [ ] **Phase 4 — Observability**: audit + lineage views, governance scorecard dashboard ([ADR-0009](adr/0009-audit-views-and-scorecard.md)).
+  - [x] Audit views in `audit` (`column_lineage`, `table_access`, `grant_changes`, `policy_changes`, `access_denied`): SQL in `src/audit/views.sql`, created and owned by an account admin (`make audit-views`); bodies checked against `gov_dev` system tables (2026-10-29).
+  - [x] `gov_engine.scorecard` + pipeline task `scorecard` (`run_if: ALL_DONE`) writing `audit.scorecard`, `audit.findings`, `audit.table_inventory`.
+  - [x] AI/BI dashboard `governance_scorecard` in the bundle; `gov-auditors` `CAN_VIEW`, no embedded credentials.
+  - [ ] Views created in `gov_dev`; dev pipeline run with the `scorecard` task; dashboard checked (FR10, FR11).
 - [ ] **Phase 5 — Privacy & polish**: right-to-erasure, `make demo`, README screenshots, deploy workflow.
 
 ## 10. Decisions
@@ -141,6 +145,8 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
 | Pipeline identity | `gov-deployer` in exempt group `gov-pipeline-runners` (ADR-0007) |
 | Bronze PII | Protected by layer, inferred from lineage; no bronze contracts ([ADR-0008](adr/0008-drift-and-pii-propagation.md)) |
 | Drift response | Report and fail on critical; never auto-revoke (ADR-0008) |
+| Audit views | SQL in repo, created and owned by an account admin; auditors read them through the `audit` schema ([ADR-0009](adr/0009-audit-views-and-scorecard.md)) |
+| Scorecard | Pipeline task as the deployer writes `audit` tables; dashboard queries with viewer credentials (ADR-0009) |
 | Environments | Two: `dev`, `prod` |
 | Contract format | ODCS v3 (subset + `customProperties`) |
 | Policy engine language | Python, `pyyaml` only (runs locally and on serverless) |

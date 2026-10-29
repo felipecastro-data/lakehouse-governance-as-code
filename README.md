@@ -31,7 +31,7 @@ flowchart LR
 | **Data protection** | **Native ABAC**: one catalog policy per PII type, row filter policy backed by a mapping table, pseudonymization |
 | **Data contracts** | [ODCS v3](https://bitol-io.github.io/open-data-contract-standard/) contract per governed table; the contract creates the table and its quality rules gate the pipeline |
 | **Verification** | Spec validation in CI; drift detection over `information_schema` and a PII propagation check over column lineage, as pipeline tasks ([ADR-0008](docs/adr/0008-drift-and-pii-propagation.md)) |
-| **Observability** | Audit + lineage views and a governance scorecard *(Phase 4)* |
+| **Observability** | Admin-owned audit views over system tables for auditors, and a governance scorecard dashboard fed by a pipeline task ([ADR-0009](docs/adr/0009-audit-views-and-scorecard.md)) |
 | **Platform engineering** | Databricks Asset Bundles, GitHub Actions, unit + consistency tests |
 
 ## How a policy becomes enforcement
@@ -75,10 +75,12 @@ governance/            the policy — single source of truth
   classification.yml   levels, mask strategies, PII types
   access_policy.yml    principals, grants, row filters
   contracts/           ODCS data contracts per table
-src/gov_engine/        validate · render · apply · groups + governed tags sync · drift · lineage
-src/jobs/              Databricks job entrypoints: apply, synthetic data, SQL runner, quality, drift, PII propagation
+src/gov_engine/        validate · render · apply · groups + governed tags sync · drift · lineage · scorecard · audit views
+src/jobs/              Databricks job entrypoints: apply, synthetic data, SQL runner, quality, drift, PII propagation, scorecard
+src/audit/views.sql    audit views over system tables (created by an account admin)
+src/dashboards/        governance scorecard (AI/BI dashboard)
 src/transforms/        silver and gold SQL, one file per contract table
-resources/             bundle resources: schemas, governance and pipeline jobs
+resources/             bundle resources: schemas, governance and pipeline jobs, scorecard dashboard
 databricks.yml         bundle targets (dev, prod)
 docs/                  plan, architecture, ADRs, RACI, production deltas
 tests/                 spec, render, apply and bundle-consistency tests
@@ -94,13 +96,15 @@ make plan ENV=prod         # preview the SQL
 make matrix ENV=prod       # access matrix as Markdown
 make drift ENV=dev         # declared vs actual (run as the catalog owner)
 make pii ENV=dev           # untagged columns fed by PII (column lineage)
+make scorecard ENV=dev     # governance scorecard (run as the catalog owner)
 ```
 
 Deploy to Databricks Free Edition (findings from the [Day-0 spike](docs/spike-checklist.md)):
 
 ```bash
 databricks auth login --host https://<your-workspace>.cloud.databricks.com
-make apply ENV=dev         # create catalog (SQL) + bundle deploy (schemas, job) + governance_apply
+make apply ENV=dev         # create catalog (SQL) + bundle deploy (schemas, jobs, dashboard) + governance_apply
+make audit-views ENV=dev   # once per env, as an account admin: views over system tables
 ```
 
 The apply job creates missing account groups and governed tags, then runs the SQL plan. In CI the
@@ -115,7 +119,7 @@ same commands run as the `gov-deployer` service principal ([ADR-0006](docs/adr/0
 | 1b | Deploy as `gov-deployer`, sync groups + governed tags, apply grants and policies | ✅ dev |
 | 2 | Synthetic data, contract-first tables, bronze → silver → gold, quality checks | ✅ dev |
 | 3 | Drift detection, PII propagation check via column lineage | ✅ dev |
-| 4 | Audit + lineage views, scorecard dashboard | ⏳ |
+| 4 | Audit + lineage views, scorecard dashboard | 🚧 dev |
 | 5 | Right-to-erasure, scripted demo | ⏳ |
 
 Full plan: [docs/PLAN.md](docs/PLAN.md).

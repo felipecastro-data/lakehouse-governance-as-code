@@ -1,4 +1,5 @@
-# Synthetic data -> bronze -> silver -> gold, then the contracts' quality rules, drift and PII propagation checks.
+# Synthetic data -> bronze -> silver -> gold, then the contracts' quality rules, drift and PII propagation checks,
+# and the governance scorecard.
 # Runs as the deployer (gov-deployer), a member of gov-pipeline-runners, which the ABAC policies
 # exempt so silver and gold are built from clear data (docs/adr/0007).
 resources:
@@ -64,6 +65,15 @@ resources:
           spark_python_task:
             python_file: ../src/jobs/check_pii_propagation.py
             parameters: ["--env", "${bundle.target}", "--root", "${workspace.file_path}"]
+
+        # Measurement (docs/adr/0009): records coverage and findings even when a check failed.
+        - task_key: scorecard
+          depends_on: [{task_key: drift}, {task_key: pii_propagation}]
+          run_if: ALL_DONE
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/jobs/build_scorecard.py
+            parameters: ["--env", "${bundle.target}", "--root", "${workspace.file_path}", "--run-id", "{{job.run_id}}"]
 
       environments:
         - environment_key: default

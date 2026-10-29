@@ -1,0 +1,16 @@
+# Governance scorecard (FR11, docs/adr/0009). Reads <catalog>.audit: the scorecard tables the pipeline writes
+# and the audit views an account admin owns. Viewers query with their own credentials (no embedded
+# credentials), so an auditor sees exactly what the audit schema grant allows and never touches system.*.
+resources:
+  dashboards:
+    governance_scorecard:
+      display_name: Governance scorecard (${bundle.target})
+      file_path: ../src/dashboards/governance_scorecard.lvdash.json
+      warehouse_id: ${var.warehouse_id}
+      dataset_catalog: ${var.catalog}
+      dataset_schema: audit
+      embed_credentials: false
+      permissions:
+        # Must match access_policy.yml principals.auditors (enforced by tests/test_consistency.py).
+        - group_name: gov-auditors
+          level: CAN_VIEW
