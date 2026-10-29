@@ -26,7 +26,8 @@ targets:
     variables:
       catalog: gov_dev
     presets:
-      trigger_pause_status: PAUSED
+      # Daily run (06:00 UTC) so the governance scorecard builds history in dev too (docs/adr/0009).
+      trigger_pause_status: UNPAUSED
       tags:
         environment: dev
 
