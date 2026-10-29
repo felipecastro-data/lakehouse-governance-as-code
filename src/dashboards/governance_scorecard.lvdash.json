@@ -96,6 +96,44 @@
       ]
     },
     {
+      "name": "classification_mix",
+      "displayName": "Tables by layer and classification",
+      "queryLines": [
+        "SELECT layer, coalesce(classification, 'unclassified') AS classification, count(*) AS tables\n",
+        "FROM table_inventory\n",
+        "GROUP BY ALL"
+      ]
+    },
+    {
+      "name": "pii_by_table",
+      "displayName": "PII columns per table",
+      "queryLines": [
+        "SELECT concat(table_schema, '.', element_at(split(table_full_name, '[.]'), 3)) AS table_name, layer,\n",
+        "       pii_columns, columns\n",
+        "FROM table_inventory"
+      ]
+    },
+    {
+      "name": "policy_changes_daily",
+      "displayName": "Policy changes per day",
+      "queryLines": [
+        "SELECT event_date, IF(by_engine, 'gov_engine apply', 'manual') AS source, count(*) AS changes\n",
+        "FROM policy_changes\n",
+        "WHERE event_date >= current_date() - INTERVAL 30 DAYS\n",
+        "GROUP BY ALL"
+      ]
+    },
+    {
+      "name": "restricted_by_principal",
+      "displayName": "Restricted reads by principal",
+      "queryLines": [
+        "SELECT IF(a.by_pipeline, 'gov-deployer (pipeline)', a.principal) AS principal, i.layer, count(*) AS reads\n",
+        "FROM table_access a JOIN table_inventory i USING (table_full_name)\n",
+        "WHERE i.classification = 'restricted' AND a.access = 'read' AND a.event_date >= current_date() - INTERVAL 30 DAYS\n",
+        "GROUP BY ALL"
+      ]
+    },
+    {
       "name": "inventory",
       "displayName": "Table inventory",
       "queryLines": [
@@ -117,7 +155,7 @@
             "multilineTextboxSpec": {
               "lines": [
                 "## Governance scorecard\n",
-                "Measured by the pipeline's `scorecard` task as the catalog owner, after the drift and PII propagation checks. Coverage is for the curated layers (silver, gold); bronze is protected by layer. See docs/adr/0009."
+                "Measured by the pipeline's `scorecard` task as the catalog owner, after the drift and PII propagation checks. Coverage covers silver and gold; bronze is protected by layer and classified from lineage (docs/adr/0009)."
               ]
             }
           },
@@ -152,14 +190,12 @@
               "encodings": {
                 "value": {
                   "fieldName": "pct_owned",
-                  "displayName": "% owned"
+                  "displayName": "% tables owned"
                 }
               },
               "frame": {
                 "showTitle": true,
-                "title": "% owned",
-                "showDescription": true,
-                "description": "Silver/gold tables with an owner group"
+                "title": "% tables owned"
               }
             }
           },
@@ -194,14 +230,12 @@
               "encodings": {
                 "value": {
                   "fieldName": "pct_classified",
-                  "displayName": "% classified"
+                  "displayName": "% columns classified"
                 }
               },
               "frame": {
                 "showTitle": true,
-                "title": "% classified",
-                "showDescription": true,
-                "description": "Silver/gold columns with a classification tag"
+                "title": "% columns classified"
               }
             }
           },
@@ -241,9 +275,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "% PII masked",
-                "showDescription": true,
-                "description": "PII columns covered by a live mask policy"
+                "title": "% PII masked"
               }
             }
           },
@@ -283,9 +315,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Critical drift",
-                "showDescription": true,
-                "description": "Undeclared access or weakened protection"
+                "title": "Critical drift"
               }
             }
           },
@@ -325,9 +355,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Drift warnings",
-                "showDescription": true,
-                "description": "Missing grants, contract mismatches"
+                "title": "Drift warnings"
               }
             }
           },
@@ -367,9 +395,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Untagged PII",
-                "showDescription": true,
-                "description": "Columns fed by PII without a pii_type tag"
+                "title": "Untagged PII"
               }
             }
           },
@@ -508,6 +534,140 @@
         },
         {
           "widget": {
+            "name": "classification_mix",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "classification_mix",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "layer",
+                      "expression": "`layer`"
+                    },
+                    {
+                      "name": "tables",
+                      "expression": "`tables`"
+                    },
+                    {
+                      "name": "classification",
+                      "expression": "`classification`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "layer",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "layer"
+                },
+                "y": {
+                  "fieldName": "tables",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "tables"
+                },
+                "color": {
+                  "fieldName": "classification",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "classification"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Tables by layer and classification",
+                "showDescription": true,
+                "description": "Bronze is classified from column lineage"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "pii_by_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "pii_by_table",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "table_name",
+                      "expression": "`table_name`"
+                    },
+                    {
+                      "name": "pii_columns",
+                      "expression": "`pii_columns`"
+                    },
+                    {
+                      "name": "layer",
+                      "expression": "`layer`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "table_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "table name"
+                },
+                "y": {
+                  "fieldName": "pii_columns",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "PII columns"
+                },
+                "color": {
+                  "fieldName": "layer",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "layer"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "PII columns per table",
+                "showDescription": true,
+                "description": "Tagged, or inferred from lineage in bronze"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 8,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
             "name": "coverage_trend",
             "queries": [
               {
@@ -562,15 +722,15 @@
                 "showTitle": true,
                 "title": "Coverage per run",
                 "showDescription": true,
-                "description": "Percent"
+                "description": "Percent; one point per pipeline run"
               }
             }
           },
           "position": {
             "x": 0,
-            "y": 8,
+            "y": 14,
             "width": 3,
-            "height": 6
+            "height": 5
           }
         },
         {
@@ -629,15 +789,15 @@
                 "showTitle": true,
                 "title": "Drift and untagged PII per run",
                 "showDescription": true,
-                "description": "Findings"
+                "description": "Findings; one point per pipeline run"
               }
             }
           },
           "position": {
             "x": 3,
-            "y": 8,
+            "y": 14,
             "width": 3,
-            "height": 6
+            "height": 5
           }
         },
         {
@@ -733,15 +893,15 @@
                 "showTitle": true,
                 "title": "Findings in the latest run",
                 "showDescription": true,
-                "description": "Critical findings fail the pipeline's drift or pii_propagation task"
+                "description": "Empty is good: critical findings fail the drift or pii_propagation task"
               }
             }
           },
           "position": {
             "x": 0,
-            "y": 14,
+            "y": 19,
             "width": 6,
-            "height": 7
+            "height": 5
           }
         }
       ],
@@ -814,6 +974,140 @@
           "position": {
             "x": 0,
             "y": 0,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "policy_changes_daily",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "policy_changes_daily",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "event_date",
+                      "expression": "`event_date`"
+                    },
+                    {
+                      "name": "changes",
+                      "expression": "`changes`"
+                    },
+                    {
+                      "name": "source",
+                      "expression": "`source`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "event_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "event date"
+                },
+                "y": {
+                  "fieldName": "changes",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "changes"
+                },
+                "color": {
+                  "fieldName": "source",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "source"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "ABAC policy changes per day (30d)",
+                "showDescription": true,
+                "description": "gov_engine runs CREATE OR REPLACE POLICY on every apply"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "restricted_by_principal",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "restricted_by_principal",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "principal",
+                      "expression": "`principal`"
+                    },
+                    {
+                      "name": "reads",
+                      "expression": "`reads`"
+                    },
+                    {
+                      "name": "layer",
+                      "expression": "`layer`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "principal",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "principal"
+                },
+                "y": {
+                  "fieldName": "reads",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "reads"
+                },
+                "color": {
+                  "fieldName": "layer",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "layer"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Restricted reads by principal (30d)",
+                "showDescription": true,
+                "description": "From table lineage"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
             "width": 3,
             "height": 6
           }
@@ -937,13 +1231,13 @@
                 "showTitle": true,
                 "title": "Reads of restricted tables (30d)",
                 "showDescription": true,
-                "description": "From table lineage; bronze is classified from column lineage"
+                "description": "Bronze is classified from column lineage"
               }
             }
           },
           "position": {
             "x": 3,
-            "y": 0,
+            "y": 6,
             "width": 3,
             "height": 6
           }
@@ -1086,9 +1380,9 @@
           },
           "position": {
             "x": 0,
-            "y": 6,
+            "y": 12,
             "width": 6,
-            "height": 7
+            "height": 6
           }
         },
         {
@@ -1203,9 +1497,9 @@
           },
           "position": {
             "x": 0,
-            "y": 13,
+            "y": 18,
             "width": 6,
-            "height": 6
+            "height": 5
           }
         },
         {
@@ -1359,7 +1653,7 @@
           },
           "position": {
             "x": 0,
-            "y": 19,
+            "y": 23,
             "width": 6,
             "height": 6
           }
