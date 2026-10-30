@@ -151,6 +151,7 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
   - [x] `make audit-views ENV=prod` as the admin.
   - [x] First prod pipeline run 139647127695825 (2026-10-30, 5m 6s): all 11 tasks green. Scorecard `pct_owned` 100 (3/3), `pct_classified` 100 (24/24), `pct_pii_masked` 100 (9/9), drift 0/0, `untagged_pii` 0, erasure 0/0.
   - Note: `restricted_tables` was 2, not 4. Bronze is classified from column lineage, and on a fresh catalog lineage lands after the run that wrote it (scorecard 16:02:21, first lineage row 16:02:31; ADR-0008). The next run classifies bronze.
+  - 2026-10-30: prod daily schedule paused (`trigger_pause_status: PAUSED`) to save Free Edition quota; prod runs on demand with `make pipeline ENV=prod`.
 
 ## 10. Decisions
 

@@ -37,6 +37,7 @@ targets:
     # Default root path = the deployer's home folder (gov-deployer in CI), so no one else can edit
     # the deployed files. /Workspace/Shared would be writable by every workspace user.
     presets:
-      trigger_pause_status: UNPAUSED
+      # Paused to save Free Edition quota; run on demand (`make pipeline ENV=prod`) or set UNPAUSED.
+      trigger_pause_status: PAUSED
       tags:
         environment: prod
