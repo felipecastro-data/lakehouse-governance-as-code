@@ -160,3 +160,27 @@ flowchart LR
   classifications.
 - **The dashboard** joins both sources at query time: reads of restricted tables, and grant changes
   that gov_engine did not make.
+
+## Right to erasure
+
+A request erases one data subject from every layer and stays erased after re-ingestion
+([ADR-0010](adr/0010-right-to-erasure.md)).
+
+```mermaid
+flowchart LR
+    R["right_to_erasure job<br/>request_id + subject_id"] --> REG[("governance.erasure_requests<br/>sha2(customer_id) only")]
+    IS[(information_schema<br/>tables with customer_id)] --> SCOPE[scope]
+    LIN[(column lineage)] --> GAP{"fed by a scope table<br/>but no key?"}
+    REG --> DEL["DELETE + REORG PURGE<br/>gold → silver → bronze"]
+    SCOPE --> DEL
+    DEL --> LOG[("audit.erasure_log<br/>rows per table")]
+    GAP -- yes --> FAIL[erasure check fails]
+    P["pipeline: bronze re-delivered"] --> RE["erasure task<br/>re-applies the register"] --> SILVER[silver · gold]
+```
+
+- **Scope** is every domain table with the subject key (`privacy.yml`), found at run time; CI rejects a
+  contract with PII but no key.
+- **The register** stores hashes; re-running a request id is a no-op.
+- **Verification** runs in the job and in every pipeline (`erasure_check`): zero rows of registered
+  subjects, and no lineage into a domain table without the key. The scorecard records
+  `erasure_requests` and `erasure_residual`.

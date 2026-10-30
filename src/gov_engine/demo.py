@@ -1,8 +1,9 @@
 """Scripted demo (`make demo ENV=dev`): declare -> apply -> enforce -> verify -> measure, against a deployed
 environment, as the person running it. Read-only: it changes nothing.
 
-Run it as the catalog owner or an admin to see the full drift and scorecard picture; the enforcement step
-shows what *you* see, so run it again as an analyst to see the masks and the row filter from the other side.
+The enforcement step shows what *you* see, so run it again as an analyst or a PII reader to see the masks and
+the row filter from the other side. Verification and the scorecard are read from what the pipeline recorded
+in `<catalog>.audit`, measured as the catalog owner (docs/adr/0009).
 """
 
 from __future__ import annotations
@@ -11,7 +12,6 @@ from collections import Counter
 from collections.abc import Callable
 
 from gov_engine.render import declared_policies, render_plan
-from gov_engine.scorecard import build_scorecard
 from gov_engine.spec import Spec
 
 Query = Callable[[str], list[dict]]
@@ -19,6 +19,8 @@ Query = Callable[[str], list[dict]]
 PII_SAMPLE = ("SELECT customer_id, full_name, email, phone, date_of_birth, national_id "
               "FROM {c}.customer_silver.customers ORDER BY customer_id LIMIT 3")
 REGIONS = "SELECT region, count(*) AS customers FROM {c}.customer_gold.customer_360 GROUP BY region ORDER BY region"
+METRIC_ORDER = ["pct_owned", "pct_classified", "pct_pii_masked", "restricted_tables", "drift_critical",
+                "drift_warning", "untagged_pii", "erasure_requests", "erasure_residual"]
 WHOAMI = "SELECT current_user() AS user, {checks}"
 
 
@@ -70,20 +72,35 @@ def run_demo(spec: Spec, env: str, query: Query, log: Callable[[str], None] = pr
     log("\n  Gold customer_360 by region (row filter by group -> region mapping):")
     _table(q(REGIONS.format(c=catalog)), log)
 
-    step(4, "VERIFY - drift, PII propagation and erasure")
-    card = build_scorecard(spec, env, q)
-    critical = sum(f.severity == "critical" for f in card.drift)
-    log(f"  drift:           {critical} critical, {len(card.drift) - critical} warning")
-    for f in card.drift[:5]:
-        log(f"    {f}")
-    log(f"  pii propagation: {card.propagation.edges} lineage edges, "
-        f"{len(card.propagation.inferred_raw_pii)} raw PII columns inferred, "
-        f"{len(card.propagation.findings)} untagged PII columns")
-    log(f"  erasure:         {card.erasure.requests} requests, {len(card.erasure.tables)} tables in scope, "
-        f"{sum(card.erasure.residual.values())} residual rows, {len(card.erasure.gaps)} gaps")
+    # information_schema shows every grant and policy only to the catalog owner, so the checks are reported
+    # as the pipeline's scorecard task measured them (as the deployer), not recomputed as the caller.
+    step(4, "VERIFY - drift, PII propagation and erasure, as the pipeline measured them")
+    latest = f"(SELECT max(run_time) FROM {catalog}.audit.scorecard)"
+    metrics = q(f"SELECT run_id, run_time, metric, value, numerator, denominator, description "
+                f"FROM {catalog}.audit.scorecard WHERE run_time = {latest}")
+    metrics.sort(key=lambda m: METRIC_ORDER.index(m["metric"]) if m["metric"] in METRIC_ORDER else len(METRIC_ORDER))
+    if not metrics:
+        log("  no scorecard recorded yet: run the pipeline first (make pipeline)")
+        return 1
+    log(f"  pipeline run {metrics[0]['run_id']} at {metrics[0]['run_time']}")
+    findings = q(f"SELECT check_name, severity, securable, detail FROM {catalog}.audit.findings "
+                 f"WHERE run_id = '{metrics[0]['run_id']}' ORDER BY severity, check_name, securable")
+    by_name = {m["metric"]: m for m in metrics}
+
+    def count(name: str) -> str:
+        value = by_name.get(name, {}).get("value")
+        return "n/a" if value is None else f"{float(value):g}"
+
+    log(f"  drift:           {count('drift_critical')} critical, {count('drift_warning')} warning")
+    log(f"  pii propagation: {count('untagged_pii')} untagged PII columns")
+    log(f"  erasure:         {count('erasure_requests')} requests, {count('erasure_residual')} residual rows or gaps")
+    for f in findings[:5]:
+        log(f"    [{f['severity']}] {f['check_name']} {f['securable']}: {f['detail']}")
 
     step(5, "MEASURE - governance scorecard")
-    for m in card.metrics:
-        log(f"  {m}")
+    for m in metrics:
+        ratio = f"({m['numerator']}/{m['denominator']})" if m["denominator"] not in (None, "") else ""
+        log(f"  {m['metric']:<18} {float(m['value']) if m['value'] is not None else 'n/a':>6g} {ratio:<8} "
+            f"{m['description']}")
     log("")
     return 0

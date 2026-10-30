@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 858 436" width="858" height="436" role="img" aria-label="Access matrix for gov_prod" font-family='system-ui, -apple-system, "Segoe UI", sans-serif'>
+<title>Access matrix for gov_prod</title><style>
+  .surface { fill: #fcfcfb; } .card { fill: #ffffff; stroke: rgba(11,11,11,0.10); }
+  .ink { fill: #0b0b0b; } .ink2 { fill: #52514e; } .muted { fill: #898781; }
+  .grid { stroke: #e1e0d9; } .none { fill: #f0efec; }
+  .s1 { fill: #86b6ef; } .s2 { fill: #3987e5; } .s3 { fill: #1c5cab; } .s4 { fill: #0d366b; }
+  .on-light { fill: #0b0b0b; } .on-dark { fill: #ffffff; } .good { fill: #0ca30c; } .good-text { fill: #006300; }
+  @media (prefers-color-scheme: dark) {
+    .surface { fill: #1a1a19; } .card { fill: #222221; stroke: rgba(255,255,255,0.10); }
+    .ink { fill: #f0efec; } .ink2 { fill: #c3c2b7; } .grid { stroke: #2c2c2a; } .none { fill: #2c2c2a; }
+    .s1 { fill: #184f95; } .s2 { fill: #256abf; } .s3 { fill: #3987e5; } .s4 { fill: #86b6ef; }
+    .on-light { fill: #ffffff; } .good-text { fill: #0ca30c; }
+    text.on-s4 { fill: #0b0b0b; }
+  }
+</style>
+<rect class="surface" width="858" height="436" rx="12"/>
+<text x="24" y="34" class="ink" font-size="17" text-anchor="start" font-weight="600">Who can do what in gov_prod</text>
+<text x="24" y="56" class="ink2" font-size="12" text-anchor="start" font-weight="400">Schema privileges rendered from access_policy.yml. Masks and row filters apply on top.</text>
+<text x="236.0" y="70" class="ink2" font-size="11" text-anchor="middle" font-weight="400">customer</text>
+<text x="236.0" y="84" class="muted" font-size="11" text-anchor="middle" font-weight="400">bronze</text>
+<text x="328.0" y="70" class="ink2" font-size="11" text-anchor="middle" font-weight="400">sales</text>
+<text x="328.0" y="84" class="muted" font-size="11" text-anchor="middle" font-weight="400">bronze</text>
+<text x="420.0" y="70" class="ink2" font-size="11" text-anchor="middle" font-weight="400">customer</text>
+<text x="420.0" y="84" class="muted" font-size="11" text-anchor="middle" font-weight="400">silver</text>
+<text x="512.0" y="70" class="ink2" font-size="11" text-anchor="middle" font-weight="400">sales</text>
+<text x="512.0" y="84" class="muted" font-size="11" text-anchor="middle" font-weight="400">silver</text>
+<text x="604.0" y="70" class="ink2" font-size="11" text-anchor="middle" font-weight="400">customer</text>
+<text x="604.0" y="84" class="muted" font-size="11" text-anchor="middle" font-weight="400">gold</text>
+<text x="696.0" y="70" class="ink2" font-size="11" text-anchor="middle" font-weight="400">sales</text>
+<text x="696.0" y="84" class="muted" font-size="11" text-anchor="middle" font-weight="400">gold</text>
+<text x="788.0" y="70" class="ink2" font-size="11" text-anchor="middle" font-weight="400">audit</text>
+<text x="788.0" y="84" class="muted" font-size="11" text-anchor="middle" font-weight="400"></text>
+<text x="178" y="111.0" class="ink" font-size="12" text-anchor="end" font-weight="400">gov-platform-admins</text>
+<rect class="s4" x="191" y="93" width="90" height="28" rx="4"/>
+<text x="236.0" y="111.0" class="on-dark on-s4" font-size="11" text-anchor="middle" font-weight="400">all (admin)</text>
+<rect class="s4" x="283" y="93" width="90" height="28" rx="4"/>
+<text x="328.0" y="111.0" class="on-dark on-s4" font-size="11" text-anchor="middle" font-weight="400">all (admin)</text>
+<rect class="s4" x="375" y="93" width="90" height="28" rx="4"/>
+<text x="420.0" y="111.0" class="on-dark on-s4" font-size="11" text-anchor="middle" font-weight="400">all (admin)</text>
+<rect class="s4" x="467" y="93" width="90" height="28" rx="4"/>
+<text x="512.0" y="111.0" class="on-dark on-s4" font-size="11" text-anchor="middle" font-weight="400">all (admin)</text>
+<rect class="s4" x="559" y="93" width="90" height="28" rx="4"/>
+<text x="604.0" y="111.0" class="on-dark on-s4" font-size="11" text-anchor="middle" font-weight="400">all (admin)</text>
+<rect class="s4" x="651" y="93" width="90" height="28" rx="4"/>
+<text x="696.0" y="111.0" class="on-dark on-s4" font-size="11" text-anchor="middle" font-weight="400">all (admin)</text>
+<rect class="s4" x="743" y="93" width="90" height="28" rx="4"/>
+<text x="788.0" y="111.0" class="on-dark on-s4" font-size="11" text-anchor="middle" font-weight="400">all (admin)</text>
+<text x="178" y="141.0" class="ink" font-size="12" text-anchor="end" font-weight="400">gov-data-engineers</text>
+<rect class="s1" x="191" y="123" width="90" height="28" rx="4"/>
+<text x="236.0" y="141.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="s1" x="283" y="123" width="90" height="28" rx="4"/>
+<text x="328.0" y="141.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="s1" x="375" y="123" width="90" height="28" rx="4"/>
+<text x="420.0" y="141.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="s1" x="467" y="123" width="90" height="28" rx="4"/>
+<text x="512.0" y="141.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="s1" x="559" y="123" width="90" height="28" rx="4"/>
+<text x="604.0" y="141.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="s1" x="651" y="123" width="90" height="28" rx="4"/>
+<text x="696.0" y="141.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="none" x="743" y="123" width="90" height="28" rx="4"/>
+<text x="788.0" y="141.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<text x="178" y="171.0" class="ink" font-size="12" text-anchor="end" font-weight="400">gov-analysts-amer</text>
+<rect class="none" x="191" y="153" width="90" height="28" rx="4"/>
+<text x="236.0" y="171.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="283" y="153" width="90" height="28" rx="4"/>
+<text x="328.0" y="171.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="375" y="153" width="90" height="28" rx="4"/>
+<text x="420.0" y="171.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="467" y="153" width="90" height="28" rx="4"/>
+<text x="512.0" y="171.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="s1" x="559" y="153" width="90" height="28" rx="4"/>
+<text x="604.0" y="171.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="s1" x="651" y="153" width="90" height="28" rx="4"/>
+<text x="696.0" y="171.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="none" x="743" y="153" width="90" height="28" rx="4"/>
+<text x="788.0" y="171.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<text x="178" y="201.0" class="ink" font-size="12" text-anchor="end" font-weight="400">gov-analysts-emea</text>
+<rect class="none" x="191" y="183" width="90" height="28" rx="4"/>
+<text x="236.0" y="201.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="283" y="183" width="90" height="28" rx="4"/>
+<text x="328.0" y="201.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="375" y="183" width="90" height="28" rx="4"/>
+<text x="420.0" y="201.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="467" y="183" width="90" height="28" rx="4"/>
+<text x="512.0" y="201.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="s1" x="559" y="183" width="90" height="28" rx="4"/>
+<text x="604.0" y="201.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="s1" x="651" y="183" width="90" height="28" rx="4"/>
+<text x="696.0" y="201.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="none" x="743" y="183" width="90" height="28" rx="4"/>
+<text x="788.0" y="201.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<text x="178" y="231.0" class="ink" font-size="12" text-anchor="end" font-weight="400">gov-pii-readers</text>
+<rect class="none" x="191" y="213" width="90" height="28" rx="4"/>
+<text x="236.0" y="231.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="283" y="213" width="90" height="28" rx="4"/>
+<text x="328.0" y="231.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="s1" x="375" y="213" width="90" height="28" rx="4"/>
+<text x="420.0" y="231.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="s1" x="467" y="213" width="90" height="28" rx="4"/>
+<text x="512.0" y="231.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="s1" x="559" y="213" width="90" height="28" rx="4"/>
+<text x="604.0" y="231.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="s1" x="651" y="213" width="90" height="28" rx="4"/>
+<text x="696.0" y="231.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="none" x="743" y="213" width="90" height="28" rx="4"/>
+<text x="788.0" y="231.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<text x="178" y="261.0" class="ink" font-size="12" text-anchor="end" font-weight="400">gov-pii-restricted-readers</text>
+<rect class="none" x="191" y="243" width="90" height="28" rx="4"/>
+<text x="236.0" y="261.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="283" y="243" width="90" height="28" rx="4"/>
+<text x="328.0" y="261.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="s1" x="375" y="243" width="90" height="28" rx="4"/>
+<text x="420.0" y="261.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="s1" x="467" y="243" width="90" height="28" rx="4"/>
+<text x="512.0" y="261.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="s1" x="559" y="243" width="90" height="28" rx="4"/>
+<text x="604.0" y="261.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="s1" x="651" y="243" width="90" height="28" rx="4"/>
+<text x="696.0" y="261.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="none" x="743" y="243" width="90" height="28" rx="4"/>
+<text x="788.0" y="261.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<text x="178" y="291.0" class="ink" font-size="12" text-anchor="end" font-weight="400">gov-customer-stewards</text>
+<rect class="none" x="191" y="273" width="90" height="28" rx="4"/>
+<text x="236.0" y="291.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="283" y="273" width="90" height="28" rx="4"/>
+<text x="328.0" y="291.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="s2" x="375" y="273" width="90" height="28" rx="4"/>
+<text x="420.0" y="291.0" class="on-dark" font-size="11" text-anchor="middle" font-weight="400">read + tag</text>
+<rect class="none" x="467" y="273" width="90" height="28" rx="4"/>
+<text x="512.0" y="291.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="s2" x="559" y="273" width="90" height="28" rx="4"/>
+<text x="604.0" y="291.0" class="on-dark" font-size="11" text-anchor="middle" font-weight="400">read + tag</text>
+<rect class="none" x="651" y="273" width="90" height="28" rx="4"/>
+<text x="696.0" y="291.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="743" y="273" width="90" height="28" rx="4"/>
+<text x="788.0" y="291.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<text x="178" y="321.0" class="ink" font-size="12" text-anchor="end" font-weight="400">gov-sales-stewards</text>
+<rect class="none" x="191" y="303" width="90" height="28" rx="4"/>
+<text x="236.0" y="321.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="283" y="303" width="90" height="28" rx="4"/>
+<text x="328.0" y="321.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="375" y="303" width="90" height="28" rx="4"/>
+<text x="420.0" y="321.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="s2" x="467" y="303" width="90" height="28" rx="4"/>
+<text x="512.0" y="321.0" class="on-dark" font-size="11" text-anchor="middle" font-weight="400">read + tag</text>
+<rect class="none" x="559" y="303" width="90" height="28" rx="4"/>
+<text x="604.0" y="321.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="s2" x="651" y="303" width="90" height="28" rx="4"/>
+<text x="696.0" y="321.0" class="on-dark" font-size="11" text-anchor="middle" font-weight="400">read + tag</text>
+<rect class="none" x="743" y="303" width="90" height="28" rx="4"/>
+<text x="788.0" y="321.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<text x="178" y="351.0" class="ink" font-size="12" text-anchor="end" font-weight="400">gov-auditors</text>
+<rect class="none" x="191" y="333" width="90" height="28" rx="4"/>
+<text x="236.0" y="351.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="283" y="333" width="90" height="28" rx="4"/>
+<text x="328.0" y="351.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="375" y="333" width="90" height="28" rx="4"/>
+<text x="420.0" y="351.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="467" y="333" width="90" height="28" rx="4"/>
+<text x="512.0" y="351.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="559" y="333" width="90" height="28" rx="4"/>
+<text x="604.0" y="351.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="none" x="651" y="333" width="90" height="28" rx="4"/>
+<text x="696.0" y="351.0" class="muted" font-size="11" text-anchor="middle" font-weight="400">—</text>
+<rect class="s1" x="743" y="333" width="90" height="28" rx="4"/>
+<text x="788.0" y="351.0" class="on-light" font-size="11" text-anchor="middle" font-weight="400">read</text>
+<rect class="s1" x="190" y="385" width="14" height="14" rx="3"/>
+<text x="210" y="396" class="ink2" font-size="12" text-anchor="start" font-weight="400">read</text>
+<rect class="s2" x="248" y="385" width="14" height="14" rx="3"/>
+<text x="268" y="396" class="ink2" font-size="12" text-anchor="start" font-weight="400">read + tag</text>
+<rect class="s3" x="348" y="385" width="14" height="14" rx="3"/>
+<text x="368" y="396" class="ink2" font-size="12" text-anchor="start" font-weight="400">read + write</text>
+<rect class="s4" x="462" y="385" width="14" height="14" rx="3"/>
+<text x="482" y="396" class="ink2" font-size="12" text-anchor="start" font-weight="400">all (admin)</text>
+</svg>

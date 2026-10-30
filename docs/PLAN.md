@@ -138,7 +138,15 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
   - [x] Dashboard checked in the UI by the admin (2026-10-29); daily dev schedule unpaused so the trends build history.
   - [x] FR10 with a second test user (only in `gov-auditors`, 2026-10-29): `SELECT` on `gov_dev.audit.grant_changes` returns rows; `system.access.audit` → `INSUFFICIENT_PERMISSIONS` (no `USE SCHEMA` on `system.access`); `gov_dev.customer_silver.customers` → `INSUFFICIENT_PERMISSIONS` (no `USE SCHEMA`); dashboard opens with the viewer's credentials and every counter and chart renders.
   - [x] Table widgets re-rendered after the spec fix (tables need widget spec version 2; version 1 showed "Invalid widget definition").
-- [ ] **Phase 5 — Privacy & polish**: right-to-erasure, `make demo`, README screenshots, deploy workflow.
+- [x] **Phase 5 — Privacy & polish**: right-to-erasure ([ADR-0010](adr/0010-right-to-erasure.md)), `make demo`, README visuals, deploy workflow.
+  - [x] `governance/privacy.yml` (subject key, register); CI rejects a contract with PII but no `customer_id`.
+  - [x] `gov_engine.erasure`: scope from `information_schema`, lineage gap check, hashed register (`MERGE`, idempotent), `DELETE` + `REORG ... APPLY (PURGE)`, `audit.erasure_log`.
+  - [x] `right_to_erasure` job (erase → verify) as the deployer, `CAN_MANAGE_RUN` for `gov-data-engineers`; pipeline tasks `erasure` (after bronze) and `erasure_check`; scorecard metrics `erasure_requests`, `erasure_residual`.
+  - [x] FR12 acceptance in dev (2026-10-30): `DSR-0001` for `C000042` deleted 31 rows from 5 tables (1 + 14 bronze, 1 + 14 silver, 1 gold); verify `0 residual rows, 0 gaps`. The next pipeline run re-ingested 15 bronze rows for the subject, the `erasure` task removed them before silver, `erasure_check` passed, scorecard `erasure_requests` 1 / `erasure_residual` 0.
+  - [x] `make demo`: declare → apply → enforce (as the caller) → verify and measure (from the pipeline's recorded scorecard, measured as the catalog owner).
+  - [x] Deploy workflow: validates policy first, optional pipeline run, step summary; `databricks/setup-cli` pinned to v1.22.1.
+  - [x] README charts generated from the spec and the recorded scorecard (`scripts/readme_visuals.py` → `docs/images/*.svg`).
+- [ ] **Prod deploy**: `deploy` workflow with `target=prod` (environment approval), `make audit-views ENV=prod` as the admin, first pipeline run.
 
 ## 10. Decisions
 
