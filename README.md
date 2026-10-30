@@ -359,6 +359,9 @@ Measured in `gov_dev` by the pipeline's scorecard task:
 | Critical drift / untagged PII / erasure residual rows | **0 / 0 / 0** |
 | Unit + consistency tests | 90 |
 
+Deployed to **`gov_prod`** through the approval-gated workflow: the first prod run was green on all 11 tasks,
+with the same 100% / 100% / 100% coverage and 0 drift.
+
 **Proven acceptance tests** (recorded in [PLAN.md](docs/PLAN.md)):
 
 - ✅ A manual `GRANT SELECT … TO gov-analysts-amer` **failed the next pipeline run** with `[critical] … undeclared SELECT`.

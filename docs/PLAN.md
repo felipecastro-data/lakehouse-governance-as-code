@@ -146,10 +146,11 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
   - [x] `make demo`: declare → apply → enforce (as the caller) → verify and measure (from the pipeline's recorded scorecard, measured as the catalog owner).
   - [x] Deploy workflow: validates policy first, optional pipeline run, step summary; `databricks/setup-cli` pinned to v1.22.1.
   - [x] README charts generated from the spec and the recorded scorecard (`scripts/readme_visuals.py` → `docs/images/*.svg`).
-- [ ] **Prod deploy**: `deploy` workflow with `target=prod` (environment approval), `make audit-views ENV=prod` as the admin, first pipeline run.
+- [x] **Prod deploy**: `deploy` workflow with `target=prod` (environment approval), `make audit-views ENV=prod` as the admin, first pipeline run.
   - [x] 2026-10-30: `deploy` run 41082539058 (`target=prod`, approved) green; `gov_prod` catalog, schemas and the three prod jobs exist.
-  - [ ] `make audit-views ENV=prod` as the admin.
-  - [ ] First prod pipeline run (`make pipeline ENV=prod`): all tasks green, scorecard 100/100/100 with 0 drift.
+  - [x] `make audit-views ENV=prod` as the admin.
+  - [x] First prod pipeline run 139647127695825 (2026-10-30, 5m 6s): all 11 tasks green. Scorecard `pct_owned` 100 (3/3), `pct_classified` 100 (24/24), `pct_pii_masked` 100 (9/9), drift 0/0, `untagged_pii` 0, erasure 0/0.
+  - Note: `restricted_tables` was 2, not 4. Bronze is classified from column lineage, and on a fresh catalog lineage lands after the run that wrote it (scorecard 16:02:21, first lineage row 16:02:31; ADR-0008). The next run classifies bronze.
 
 ## 10. Decisions
 
