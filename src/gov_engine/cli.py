@@ -1,5 +1,5 @@
-"""Command line: validate the spec, preview SQL, print the access matrix, check drift and PII lineage,
-measure the scorecard and create the audit views."""
+"""Command line: validate the spec, preview SQL, print the access matrix, check drift, PII lineage and
+erasure, measure the scorecard, create the audit views and run the demo."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from gov_engine.audit import create_audit_views
 from gov_engine.catalog import ensure_catalog
 from gov_engine.databricks_api import cli_api, pick_warehouse, query_rows
 from gov_engine.drift import detect_drift
+from gov_engine.erasure import check_erasure, report_erasure
 from gov_engine.identity import sync_groups
 from gov_engine.lineage import find_untagged_pii
 from gov_engine.render import PHASES, render_access_matrix, render_plan
@@ -47,7 +48,9 @@ def main(argv: list[str] | None = None) -> int:
 
     for name, help_text in (("drift", "compare declared and actual state; exit 1 on critical drift"),
                             ("pii-propagation", "flag untagged columns fed by PII (column lineage); exit 1 if any"),
-                            ("scorecard", "print the governance scorecard (no write; the pipeline records it)")):
+                            ("scorecard", "print the governance scorecard (no write; the pipeline records it)"),
+                            ("erasure-check", "verify erasure: no residual rows or unreachable tables; exit 1 if any"),
+                            ("demo", "walk through the whole program against a deployed environment")):
         cmd = sub.add_parser(name, help=f"{help_text}. Run as the catalog owner to see every grant and policy")
         cmd.add_argument("--env", required=True)
         cmd.add_argument("--warehouse-id", help="default: first serverless SQL warehouse")
@@ -93,7 +96,7 @@ def main(argv: list[str] | None = None) -> int:
         api = cli_api(args.profile)
         create_audit_views(spec, args.env, Path(args.root), api, args.warehouse_id or pick_warehouse(api),
                            dry_run=args.dry_run)
-    elif args.command in ("drift", "pii-propagation", "scorecard"):
+    elif args.command in ("drift", "pii-propagation", "scorecard", "erasure-check", "demo"):
         api = cli_api(args.profile)
         warehouse = args.warehouse_id or pick_warehouse(api)
 
@@ -105,6 +108,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "scorecard":
             print("\n".join(map(str, build_scorecard(spec, args.env, query).metrics)))
             return 0
+        if args.command == "erasure-check":
+            return report_erasure(check_erasure(spec, args.env, query))
+        if args.command == "demo":
+            from gov_engine.demo import run_demo
+
+            return run_demo(spec, args.env, query)
         return report_propagation(find_untagged_pii(spec, args.env, query))
     elif args.command == "principals":
         print("\n".join(spec.access.principals.values()))

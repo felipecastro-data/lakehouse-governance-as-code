@@ -21,6 +21,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from gov_engine.drift import QUERIES, DriftFinding, detect_drift
+from gov_engine.erasure import ErasureReport, check_erasure
 from gov_engine.lineage import PropagationReport, find_untagged_pii, protected_columns
 from gov_engine.render import TAG_CLASSIFICATION, declared_policies
 from gov_engine.spec import Spec
@@ -37,7 +38,7 @@ TABLES = {
                   "Governance scorecard history, one row per metric per pipeline run (ADR-0009)."),
     "findings": ("run_id STRING, run_time TIMESTAMP, check_name STRING, severity STRING, kind STRING, "
                  "securable STRING, detail STRING",
-                 "Drift and PII propagation findings per pipeline run (ADR-0008, ADR-0009)."),
+                 "Drift, PII propagation and erasure findings per pipeline run (ADR-0008, ADR-0009, ADR-0010)."),
     "table_inventory": ("table_full_name STRING, table_schema STRING, domain STRING, layer STRING, owner STRING, "
                         "classification STRING, classified_by STRING, data_contract STRING, columns BIGINT, "
                         "classified_columns BIGINT, pii_columns BIGINT",
@@ -64,6 +65,7 @@ class Scorecard:
     metrics: list[Metric]
     drift: list[DriftFinding]
     propagation: PropagationReport
+    erasure: ErasureReport
     inventory: list[dict]
 
     def finding_rows(self) -> list[dict]:
@@ -73,6 +75,10 @@ class Scorecard:
                "detail": f.detail} for f in self.drift),
             *({"check_name": "pii_propagation", "severity": "critical", "kind": "column", "securable": f.target_column,
                "detail": str(f)} for f in self.propagation.findings),
+            *({"check_name": "erasure", "severity": "critical", "kind": "table", "securable": t,
+               "detail": f"{n} rows of erased subjects remain"} for t, n in sorted(self.erasure.residual.items())),
+            *({"check_name": "erasure", "severity": "critical", "kind": "table", "securable": tgt,
+               "detail": f"fed by {src} but has no subject key"} for src, tgt in self.erasure.gaps),
         ]
 
 
@@ -96,6 +102,7 @@ def build_scorecard(spec: Spec, env: str, query: Query) -> Scorecard:
 
     drift = detect_drift(spec, env, q)
     propagation = find_untagged_pii(spec, env, q)
+    erasure = check_erasure(spec, env, q)
 
     schemas = {s: (domain, layer) for s, domain, layer in spec.layout.domain_schemas()}
     curated = {s for s, (_, layer) in schemas.items() if layer != spec.layout.layers[0]}
@@ -158,5 +165,8 @@ def build_scorecard(spec: Spec, env: str, query: Query) -> Scorecard:
         _count("drift_critical", critical, "critical drift findings (fail the drift task)"),
         _count("drift_warning", len(drift) - critical, "drift warnings"),
         _count("untagged_pii", len(propagation.findings), "silver/gold columns fed by PII without a pii_type tag"),
+        _count("erasure_requests", erasure.requests, "right-to-erasure requests in the register"),
+        _count("erasure_residual", sum(erasure.residual.values()) + len(erasure.gaps),
+               "rows of erased subjects still present, plus tables erasure can't reach"),
     ]
-    return Scorecard(metrics, drift, propagation, inventory)
+    return Scorecard(metrics, drift, propagation, erasure, inventory)

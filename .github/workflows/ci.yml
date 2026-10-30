@@ -40,7 +40,7 @@ jobs:
       DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
     steps:
       - uses: actions/checkout@v4
-      - uses: databricks/setup-cli@main  # pin to a release tag once chosen
+      - uses: databricks/setup-cli@v1.22.1
         if: env.DATABRICKS_CLIENT_ID != ''
       - if: env.DATABRICKS_CLIENT_ID != ''
         run: |

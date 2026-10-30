@@ -7,6 +7,7 @@ INSERT OVERWRITE gov_prod.governance.region_access VALUES
   ('gov-pii-readers', 'AMER'),
   ('gov-pii-readers', 'APAC'),
   ('gov-pii-readers', 'EMEA');
+CREATE TABLE IF NOT EXISTS gov_prod.governance.erasure_requests (request_id STRING NOT NULL, subject_hash STRING NOT NULL, requested_at TIMESTAMP, requested_by STRING) COMMENT 'Right-to-erasure register: SHA-256 of customer_id, never the key. Managed by gov_engine - do not edit by hand';
 
 -- ===== functions =====
 CREATE OR REPLACE FUNCTION gov_prod.governance.mask_person_name(v STRING)

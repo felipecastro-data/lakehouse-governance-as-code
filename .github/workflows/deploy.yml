@@ -10,6 +10,10 @@ on:
         type: choice
         options: [dev, prod]
         default: dev
+      run_pipeline:
+        description: Run the lakehouse pipeline after deploying (data, checks, scorecard)
+        type: boolean
+        default: false
 
 concurrency: deploy-${{ github.event.inputs.target || 'dev' }}
 
@@ -27,12 +31,26 @@ jobs:
       DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
     steps:
       - uses: actions/checkout@v4
-      - uses: databricks/setup-cli@main  # pin to a release tag once chosen
+      - uses: databricks/setup-cli@v1.22.1
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install -q pyyaml
+      # Policy is validated before anything reaches the workspace
+      - run: PYTHONPATH=src python -m gov_engine validate
       # Default Storage rejects the bundle catalogs API, so the catalog is created with SQL first
       - run: PYTHONPATH=src python -m gov_engine ensure-catalog --env "$TARGET"
       - run: databricks bundle deploy -t "$TARGET"
       - run: databricks bundle run -t "$TARGET" governance_apply
+      - if: github.event.inputs.run_pipeline == 'true'
+        run: databricks bundle run -t "$TARGET" lakehouse_pipeline
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Deployed \`$TARGET\` as gov-deployer"
+            echo "| Resource | Name |"
+            echo "|---|---|"
+            databricks bundle summary -t "$TARGET" -o json \
+              | python -c "import json,sys; r=json.load(sys.stdin)['resources']; [print(f'| {k} | {v.get(\"name\") or v.get(\"display_name\")} |') for g in r.values() for k,v in g.items()]"
+          } >> "$GITHUB_STEP_SUMMARY" || true

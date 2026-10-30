@@ -1,0 +1,38 @@
+# Right to erasure (FR12, docs/adr/0010). Runs as the deployer, the only identity that writes in prod:
+# engineers can start a run for a request their steward approved, but can't delete data themselves.
+resources:
+  jobs:
+    right_to_erasure:
+      name: right-to-erasure-${bundle.target}
+      description: Registers an erasure request (hashed subject key), deletes the subject from every layer, purges the files and verifies.
+      max_concurrent_runs: 1
+      parameters:
+        - name: request_id
+          default: ""
+        - name: subject_id
+          default: ""
+      tasks:
+        - task_key: erase
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/jobs/erasure.py
+            parameters: ["--env", "${bundle.target}", "--root", "${workspace.file_path}", "--run-id", "{{job.run_id}}",
+                         "--request-id", "{{job.parameters.request_id}}", "--subject-id", "{{job.parameters.subject_id}}"]
+
+        - task_key: verify
+          depends_on: [{task_key: erase}]
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/jobs/erasure.py
+            parameters: ["--env", "${bundle.target}", "--root", "${workspace.file_path}", "--verify"]
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "2"
+            dependencies:
+              - pyyaml>=6
+      permissions:
+        # RACI: engineers execute erasure requests (docs/raci.md). Must match access_policy.yml principals.
+        - group_name: gov-data-engineers
+          level: CAN_MANAGE_RUN

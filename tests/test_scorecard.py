@@ -4,6 +4,7 @@ import pytest
 from test_drift import CATALOG, clean_state
 
 from gov_engine.drift import QUERIES
+from gov_engine.erasure import SCOPE_SQL
 from gov_engine.lineage import TAGS_SQL
 from gov_engine.scorecard import TABLES, TABLES_SQL, build_scorecard
 
@@ -23,6 +24,13 @@ def fake_query(state, edges):
         if sql == TAGS_SQL.format(c=CATALOG):
             return [r for r in state["column_tags"]
                     if r["tag_name"] == "pii_type" or r["tag_name"].startswith("class.")]
+        if sql.startswith(SCOPE_SQL.split("{")[0]):
+            return [{"table_schema": c["table_schema"], "table_name": c["table_name"]}
+                    for c in state["columns"] if c["column_name"] == "customer_id"]
+        if "governance.erasure_requests" in sql and "UNION ALL" not in sql and "count(*) AS n" in sql:
+            return [{"n": len(state.get("erasure_requests", []))}]
+        if "UNION ALL" in sql and "erasure_requests" in sql:
+            return [{"table_full_name": t, "n": n} for t, n in state.get("erasure_residual", {}).items()]
         assert "audit.column_lineage" in sql, sql
         return [{"source_table_full_name": s.rsplit(".", 1)[0], "source_column_name": s.rsplit(".", 1)[1],
                  "target_table_full_name": t.rsplit(".", 1)[0], "target_column_name": t.rsplit(".", 1)[1]}
@@ -45,7 +53,17 @@ def test_declared_state_scores_full_coverage(spec, state):
     assert [m[k].value for k in ("pct_owned", "pct_classified", "pct_pii_masked")] == [100.0, 100.0, 100.0]
     assert m["pct_owned"].denominator == len(spec.tables)
     assert (m["drift_critical"].value, m["drift_warning"].value, m["untagged_pii"].value) == (0, 0, 0)
+    assert (m["erasure_requests"].value, m["erasure_residual"].value) == (0, 0)
     assert result.finding_rows() == []
+
+
+def test_erased_subject_still_present_is_a_finding(spec, state):
+    state["erasure_requests"] = ["DSR-1"]
+    state["erasure_residual"] = {GOLD: 1}
+    result, m = card(spec, state)
+    assert (m["erasure_requests"].value, m["erasure_residual"].value) == (1, 1)
+    [row] = [r for r in result.finding_rows() if r["check_name"] == "erasure"]
+    assert row["securable"] == GOLD and row["severity"] == "critical"
 
 
 def test_bronze_is_classified_from_lineage_not_counted_in_coverage(spec, state):

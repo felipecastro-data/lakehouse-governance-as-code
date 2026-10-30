@@ -82,7 +82,7 @@ def render_functions(spec: Spec, env: str) -> list[Statement]:
 
 
 def render_reference_data(spec: Spec, env: str) -> list[Statement]:
-    """Mapping tables behind row filters, overwritten from the spec on every apply."""
+    """Mapping tables behind row filters, overwritten from the spec on every apply, and the erasure register."""
     catalog = spec.catalog(env)
     stmts = []
     for rf in spec.access.row_filters.values():
@@ -98,6 +98,13 @@ def render_reference_data(spec: Spec, env: str) -> list[Statement]:
             stmts.append(Statement("reference_data", f"INSERT OVERWRITE {table} VALUES\n  {values}"))
         else:
             stmts.append(Statement("reference_data", f"DELETE FROM {table}"))
+    # The erasure register is appended to by the right_to_erasure job, never overwritten (docs/adr/0010).
+    comment = f"Right-to-erasure register: SHA-256 of {spec.erasure.subject_key}, never the key. {MANAGED_BY}"
+    stmts.append(Statement(
+        "reference_data",
+        f"CREATE TABLE IF NOT EXISTS {_gov(catalog, spec.erasure.register)} (request_id STRING NOT NULL, "
+        f"subject_hash STRING NOT NULL, requested_at TIMESTAMP, requested_by STRING) COMMENT {_lit(comment)}",
+    ))
     return stmts
 
 

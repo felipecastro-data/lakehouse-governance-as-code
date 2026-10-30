@@ -1,0 +1,7 @@
+# Data subject rights. See docs/adr/0010-right-to-erasure.md
+#
+# Every table that holds personal data must carry the subject key (validated for contracts, checked
+# against column lineage for everything else), so one request can be erased from every layer.
+erasure:
+  subject_key: customer_id      # identifies a data subject in every domain table
+  register: erasure_requests    # <catalog>.governance.<register>: SHA-256 of the key, never the key itself

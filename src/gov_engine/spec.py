@@ -161,11 +161,18 @@ class Table:
 
 
 @dataclass(frozen=True)
+class Erasure:
+    subject_key: str  # column that identifies a data subject in every domain table
+    register: str  # table in the governance schema holding hashed subject keys
+
+
+@dataclass(frozen=True)
 class Spec:
     layout: Layout
     classification: Classification
     access: AccessPolicy
     tables: tuple[Table, ...]
+    erasure: Erasure
 
     def catalog(self, env: str) -> str:
         if env not in self.layout.environments:
@@ -286,6 +293,11 @@ def _load_access(raw: dict[str, Any]) -> AccessPolicy:
     )
 
 
+def _load_erasure(raw: dict[str, Any]) -> Erasure:
+    cfg = raw["erasure"]
+    return Erasure(subject_key=cfg["subject_key"], register=cfg["register"])
+
+
 def _load_contract(raw: dict[str, Any]) -> list[Table]:
     owner = _custom(raw.get("customProperties")).get("owner", "")
     tables = []
@@ -326,6 +338,7 @@ def load_spec(root: str | Path = ".") -> Spec:
         classification=_load_classification(_read(gov / "classification.yml")),
         access=_load_access(_read(gov / "access_policy.yml")),
         tables=tuple(tables),
+        erasure=_load_erasure(_read(gov / "privacy.yml")),
     )
     errors = validate(spec)
     if errors:
@@ -394,6 +407,14 @@ def validate(spec: Spec) -> list[str]:
             errors.append(f"{where}: function {rf.function!r} is not a valid identifier")
         for values in rf.mapping.values():
             errors += [f"{where}: invalid value {v!r}" for v in values if not _TAG_VALUE.match(v)]
+
+    for field in ("subject_key", "register"):
+        if not _IDENTIFIER.match(getattr(spec.erasure, field)):
+            errors.append(f"privacy.erasure.{field}: {getattr(spec.erasure, field)!r} is not a valid identifier")
+    for t in spec.tables:
+        if any(c.pii_type for c in t.columns) and spec.erasure.subject_key not in {c.name for c in t.columns}:
+            errors.append(f"contract {t.contract_id}: holds personal data but has no "
+                          f"{spec.erasure.subject_key!r} column, so it can't be erased")
 
     seen: set[str] = set()
     by_contract = {t.contract_id: t for t in spec.tables}

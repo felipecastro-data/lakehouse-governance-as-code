@@ -1,5 +1,5 @@
-# Synthetic data -> bronze -> silver -> gold, then the contracts' quality rules, drift and PII propagation checks,
-# and the governance scorecard.
+# Synthetic data -> bronze -> erasure register re-applied -> silver -> gold, then the contracts' quality rules,
+# drift, PII propagation and erasure checks, and the governance scorecard.
 # Runs as the deployer (gov-deployer), a member of gov-pipeline-runners, which the ABAC policies
 # exempt so silver and gold are built from clear data (docs/adr/0007).
 resources:
@@ -23,8 +23,16 @@ resources:
             python_file: ../src/jobs/generate_bronze.py
             parameters: ["--catalog", "${var.catalog}"]
 
-        - task_key: silver_customers
+        # Sources re-deliver erased people, so the register is applied to every ingestion (docs/adr/0010).
+        - task_key: erasure
           depends_on: [{task_key: bronze}]
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/jobs/erasure.py
+            parameters: ["--env", "${bundle.target}", "--root", "${workspace.file_path}", "--run-id", "{{job.run_id}}"]
+
+        - task_key: silver_customers
+          depends_on: [{task_key: erasure}]
           environment_key: default
           spark_python_task:
             python_file: ../src/jobs/run_sql.py
@@ -66,9 +74,16 @@ resources:
             python_file: ../src/jobs/check_pii_propagation.py
             parameters: ["--env", "${bundle.target}", "--root", "${workspace.file_path}"]
 
+        - task_key: erasure_check
+          depends_on: [{task_key: quality}]
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/jobs/erasure.py
+            parameters: ["--env", "${bundle.target}", "--root", "${workspace.file_path}", "--verify"]
+
         # Measurement (docs/adr/0009): records coverage and findings even when a check failed.
         - task_key: scorecard
-          depends_on: [{task_key: drift}, {task_key: pii_propagation}]
+          depends_on: [{task_key: drift}, {task_key: pii_propagation}, {task_key: erasure_check}]
           run_if: ALL_DONE
           environment_key: default
           spark_python_task:

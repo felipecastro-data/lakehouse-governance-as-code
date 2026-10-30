@@ -78,7 +78,19 @@ def test_scorecard_runs_after_the_checks_even_when_they_fail():
     tasks = yaml.safe_load((ROOT / "resources" / "lakehouse_pipeline.job.yml").read_text())
     tasks = {t["task_key"]: t for t in tasks["resources"]["jobs"]["lakehouse_pipeline"]["tasks"]}
     scorecard = tasks["scorecard"]
-    assert scorecard["depends_on"] == [{"task_key": "drift"}, {"task_key": "pii_propagation"}]
+    assert scorecard["depends_on"] == [{"task_key": "drift"}, {"task_key": "pii_propagation"},
+                                       {"task_key": "erasure_check"}]
     assert scorecard["run_if"] == "ALL_DONE"
     assert scorecard["spark_python_task"]["python_file"] == "../src/jobs/build_scorecard.py"
     assert "{{job.run_id}}" in scorecard["spark_python_task"]["parameters"]
+
+
+def test_erasure_register_is_applied_between_ingestion_and_silver():
+    """Bronze is re-delivered on every run, so erased subjects must be removed before silver is built."""
+    tasks = yaml.safe_load((ROOT / "resources" / "lakehouse_pipeline.job.yml").read_text())
+    tasks = {t["task_key"]: t for t in tasks["resources"]["jobs"]["lakehouse_pipeline"]["tasks"]}
+    assert tasks["erasure"]["depends_on"] == [{"task_key": "bronze"}]
+    assert tasks["silver_customers"]["depends_on"] == [{"task_key": "erasure"}]
+    assert "--verify" not in tasks["erasure"]["spark_python_task"]["parameters"]
+    assert "--verify" in tasks["erasure_check"]["spark_python_task"]["parameters"]
+    assert tasks["erasure_check"]["depends_on"] == [{"task_key": "quality"}]
