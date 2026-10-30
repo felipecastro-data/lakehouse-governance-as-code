@@ -147,6 +147,9 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
   - [x] Deploy workflow: validates policy first, optional pipeline run, step summary; `databricks/setup-cli` pinned to v1.22.1.
   - [x] README charts generated from the spec and the recorded scorecard (`scripts/readme_visuals.py` → `docs/images/*.svg`).
 - [ ] **Prod deploy**: `deploy` workflow with `target=prod` (environment approval), `make audit-views ENV=prod` as the admin, first pipeline run.
+  - [x] 2026-10-30: `deploy` run 41082539058 (`target=prod`, approved) green; `gov_prod` catalog, schemas and the three prod jobs exist.
+  - [ ] `make audit-views ENV=prod` as the admin.
+  - [ ] First prod pipeline run (`make pipeline ENV=prod`): all tasks green, scorecard 100/100/100 with 0 drift.
 
 ## 10. Decisions
 

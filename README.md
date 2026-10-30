@@ -267,17 +267,27 @@ flowchart LR
 Governance is applied **before** data lands, and the scorecard runs even when a check fails, so a bad run
 is on the record too.
 
-<!-- SCREENSHOTS: enabled once docs/images/*.png are added
 ### Screenshots
 
-| Governance scorecard dashboard | Access and changes |
-|---|---|
-| ![Scorecard dashboard](docs/images/dashboard-scorecard.png) | ![Access and changes dashboard](docs/images/dashboard-access.png) |
+**Governance scorecard dashboard** (AI/BI, for auditors). Every coverage metric sits at 100 and every
+finding count at 0 on every run, so the trend lines are flat: that is the goal.
 
-| Pipeline run in Databricks Jobs | Same query, two people |
+<img src="docs/images/dashboard-scorecard.png" alt="Governance scorecard dashboard: 100% tables owned, columns classified and PII masked; 0 drift; 4 manual grant changes, 20 restricted reads by people, 32 denied requests in 30 days" width="100%">
+
+**Access and changes**: who changed grants and who read restricted data, from curated views over
+`system.access`. The 4 manual grants listed are the one-time audit-view setup by an admin, flagged because
+they did not come from the engine. Email addresses are blurred.
+
+<img src="docs/images/dashboard-access.png" alt="Access and changes page: grant and ABAC policy changes per day, restricted reads by principal, reads of restricted tables, manual grant changes" width="100%">
+
+**Denied requests and table inventory**: a test auditor without grants is refused by Unity Catalog (403),
+and every domain table carries an owner, a classification and its data contract.
+
+<img src="docs/images/dashboard-audit.png" alt="Denied requests table with PERMISSION_DENIED errors, and the table inventory with owner, classification and data contract per table" width="100%">
+
+| Pipeline run in Databricks Jobs | PII masked, even for the workspace admin |
 |---|---|
-| ![Pipeline run](docs/images/pipeline-run.png) | ![Masked vs clear](docs/images/masking.png) |
--->
+| <img src="docs/images/pipeline-run.png" alt="lakehouse-pipeline-dev run graph: governance, bronze, erasure, silver, gold, quality, then drift, erasure_check and pii_propagation, then scorecard; all succeeded" width="100%"> | <img src="docs/images/masking.png" alt="SQL editor: SELECT from customer_360 returns initials for names and masked emails such as c***@example.com" width="100%"> |
 
 ---
 
@@ -436,7 +446,7 @@ tests/                 spec, render, drift, lineage, erasure, scorecard, bundle-
 ## 👤 Author
 
 **Felipe Castro**, data architecture and governance.
-[GitHub](https://github.com/felipecastro-data) · [LinkedIn](https://www.linkedin.com/in/)
+[GitHub](https://github.com/felipecastro-data) · [LinkedIn](https://www.linkedin.com/in/felipecastro-data/)
 
 All data is synthetic and fake by construction (national IDs in the never-issued 900 range, `@example.com`
 emails, 555 phone numbers). Licensed [MIT](LICENSE).
