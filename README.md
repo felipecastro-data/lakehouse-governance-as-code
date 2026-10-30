@@ -446,10 +446,17 @@ tests/                 spec, render, drift, lineage, erasure, scorecard, bundle-
 **Databricks Asset Bundles** · serverless jobs · AI/BI dashboards · **Python 3.12** (`pyyaml` only) ·
 **SQL** · **ODCS v3** data contracts · **GitHub Actions** (OAuth M2M) · pytest · ruff · Mermaid
 
-## 👤 Author
+## 🏅 Author & Certifications
 
-**Felipe Castro**, data architecture and governance.
+**Felipe Castro**
+Senior Data Engineer @ EPAM Systems
 [GitHub](https://github.com/felipecastro-data) · [LinkedIn](https://www.linkedin.com/in/felipecastro-data/)
+
+- 🏅 **[DP-700: Microsoft Certified: Fabric Data Engineer Associate](https://learn.microsoft.com/api/credentials/share/en-us/FelipeCastro-8026/96572499DF943EBC?sharingId=13D660F56C1DFFA3)**
+- 🏅 **[DP-600: Microsoft Certified: Fabric Analytics Engineer Associate](https://learn.microsoft.com/api/credentials/share/en-us/FelipeCastro-8026/6C5A2F5A8A5864FC?sharingId=13D660F56C1DFFA3)**
+- 🏅 **[PL-300: Microsoft Certified: Power BI Data Analyst Associate](https://learn.microsoft.com/api/credentials/share/en-us/FelipeCastro-8026/F853AABE365874B3?sharingId=13D660F56C1DFFA3)**
+
+---
 
 All data is synthetic and fake by construction (national IDs in the never-issued 900 range, `@example.com`
 emails, 555 phone numbers). Licensed [MIT](LICENSE).
