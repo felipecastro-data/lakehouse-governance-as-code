@@ -6,10 +6,13 @@ export PYTHONPATH := src
 # without deploying the bundle as themselves.
 job_id = $$(databricks jobs list --name $(1)-$(ENV) --output json | $(PY) -c "import json,sys; print(json.load(sys.stdin)[0]['job_id'])")
 
-.PHONY: setup lint test validate plan matrix docs groups tags catalog drift pii scorecard erasure-check demo erase audit-views bundle-validate deploy apply pipeline
+.PHONY: setup commits lint test validate plan matrix docs groups tags catalog drift pii scorecard erasure-check demo erase audit-views bundle-validate deploy apply pipeline
 
 setup:            ## create .venv and install dev dependencies
 	python3 -m venv .venv && $(PY) -m pip install -q -e ".[dev]"
+
+commits:          ## check commit subjects on this branch (Conventional Commits, CONTRIBUTING.md)
+	scripts/check_commits.sh
 
 lint:
 	$(PY) -m ruff check src tests

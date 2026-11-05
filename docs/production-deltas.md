@@ -5,7 +5,7 @@ deliberate trade-offs, not gaps in understanding.
 
 | Area | This project (Free Edition) | Enterprise setup |
 |---|---|---|
-| Environment isolation | Catalog per env in one workspace | Workspace per env + **workspace-catalog binding** so prod data is unreachable from dev |
+| Environment isolation | Catalog per env (`gov_dev`, `gov_test`, `gov_prod`) in one workspace | Workspace per env + **workspace-catalog binding** so prod data is unreachable from dev |
 | Identity | Engine creates account groups via the workspace SCIM proxy | SCIM from the IdP (Entra ID / Okta), SSO, no local users; engine only checks groups exist |
 | Pipeline identity | `gov-deployer` runs the pipeline, exempted from policies via `gov-pipeline-runners` | Separate pipeline service principal per environment, distinct from the deployer |
 | Deployment identity | One `gov-deployer` service principal (OAuth M2M), workspace admin | One service principal per environment with least privilege: `CREATE CATALOG`, `MANAGE` on its tag policies, no workspace admin |
@@ -20,5 +20,5 @@ deliberate trade-offs, not gaps in understanding.
 | Observability ownership | Account admin owns the audit views (one-time human step per environment) | Views owned by a dedicated monitoring principal with `system.access` access, deployed from CI |
 | Right to erasure | Register holds SHA-256 of the subject key; erasure is physical after the 7-day VACUUM window | Keyed hash (HMAC, secret in a secret scope); request intake from a DSR tool (OneTrust, ServiceNow) via API; shorter `deletedFileRetentionDuration` on PII tables; erasure propagated to downstream shares and backups |
 | Data sharing | Out of scope | Delta Sharing with recipient-level row filters |
-| Change control | PR review + CI | PR review, CODEOWNERS per domain, prod deploy behind environment approval |
+| Change control | PR review + CI; dev → test → prod on one commit, each stage gated by a green pipeline run, prod behind an approval | Same chain, plus CODEOWNERS per domain and a change ticket linked to the prod approval |
 | Compliance | Demo scenarios | Compliance security profile (HIPAA/PCI) where required; retention policies enforced |

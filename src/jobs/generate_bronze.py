@@ -7,13 +7,19 @@ national IDs use the never-issued 900 area, cards are 16 random digits, phones u
 Raw data is deliberately messy so silver has real work to do: duplicate customer records,
 untrimmed mixed-case emails, unknown countries, formatted card numbers, test orders, duplicate
 orders and orders for customers that do not exist.
+
+Rows are generated lazily and written in chunks, so the same seeded stream scales from the default
+5k customers / 50k orders to a 1M / 10M scale run without holding it in driver memory (only the
+customer -> country map is kept). Sizes are job parameters on lakehouse_pipeline.
 """
 
 from __future__ import annotations
 
 import argparse
 import random
+from collections.abc import Iterable, Iterator
 from datetime import datetime, timedelta
+from itertools import islice
 
 AS_OF = datetime(2026, 10, 1)
 COUNTRIES = {  # country -> calling code; silver maps country -> region
@@ -39,8 +45,7 @@ def _ts(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def generate_customers(n: int, rng: random.Random) -> list[tuple]:
-    rows = []
+def iter_customers(n: int, rng: random.Random) -> Iterator[tuple]:
     for i in range(1, n + 1):
         first, last = rng.choice(FIRST), rng.choice(LAST)
         country = "XX" if rng.random() < 0.005 else rng.choice(list(COUNTRIES))
@@ -56,18 +61,16 @@ def generate_customers(n: int, rng: random.Random) -> list[tuple]:
             f"{rng.randint(1, 999)} {rng.choice(STREETS)}", f"City{rng.randint(1, 50)}", country,
             _ts(signup), _ts(signup + timedelta(hours=1)),
         ]
-        rows.append(tuple(row))
+        yield tuple(row)
         if rng.random() < 0.03:  # re-ingested later with a changed email: silver keeps the latest
             row[3] = f"{first}.{last}.new{i}@example.com"
             row[11] = _ts(signup + timedelta(days=rng.randint(1, 20)))
-            rows.append(tuple(row))
-    return rows
+            yield tuple(row)
 
 
-def generate_orders(n: int, customers: list[tuple], rng: random.Random) -> list[tuple]:
-    countries = {c[0]: c[9] for c in customers}
+def iter_orders(n: int, countries: dict[str, str], rng: random.Random) -> Iterator[tuple]:
+    """Orders for the customer -> country map (insertion order = first appearance of each customer)."""
     ids = list(countries)
-    rows = []
     for i in range(1, n + 1):
         customer = f"C{len(ids) + 1 + i:06d}" if rng.random() < 0.01 else rng.choice(ids)  # 1% orphans
         country = countries.get(customer, "US")
@@ -77,10 +80,23 @@ def generate_orders(n: int, customers: list[tuple], rng: random.Random) -> list[
             card = " ".join(card[k:k + 4] for k in range(0, 16, 4))
         row = (f"O{i:07d}", customer, _ts(ts), f"{rng.uniform(5, 500):.2f}", CURRENCY.get(country, "EUR"),
                card, "test" if rng.random() < 0.01 else "completed", _ts(ts + timedelta(minutes=5)))
-        rows.append(row)
+        yield row
         if rng.random() < 0.005:  # delivered twice by the source
-            rows.append(row)
-    return rows
+            yield row
+
+
+def generate_customers(n: int, rng: random.Random) -> list[tuple]:
+    return list(iter_customers(n, rng))
+
+
+def generate_orders(n: int, customers: list[tuple], rng: random.Random) -> list[tuple]:
+    return list(iter_orders(n, {c[0]: c[9] for c in customers}, rng))
+
+
+def chunks(rows: Iterable[tuple], size: int) -> Iterator[list[tuple]]:
+    it = iter(rows)
+    while batch := list(islice(it, size)):
+        yield batch
 
 
 def main() -> None:
@@ -89,6 +105,8 @@ def main() -> None:
     parser.add_argument("--customers", type=int, default=5_000)
     parser.add_argument("--orders", type=int, default=50_000)
     parser.add_argument("--seed", type=int, default=42)
+    # Rows per write. Keeps each Spark Connect local relation well under the gRPC message limit.
+    parser.add_argument("--chunk-size", type=int, default=200_000)
     args = parser.parse_args()
 
     from pyspark.sql import SparkSession
@@ -96,17 +114,27 @@ def main() -> None:
 
     spark = SparkSession.builder.getOrCreate()
     rng = random.Random(args.seed)
-    customers = generate_customers(args.customers, rng)
-    orders = generate_orders(args.orders, customers, rng)
+    countries: dict[str, str] = {}
 
-    for rows, columns, table in (
-        (customers, CUSTOMER_COLUMNS, f"{args.catalog}.customer_bronze.customers_raw"),
-        (orders, ORDER_COLUMNS, f"{args.catalog}.sales_bronze.orders_raw"),
-    ):
-        df = spark.createDataFrame(rows, schema=", ".join(f"{c} STRING" for c in columns))
-        df = df.withColumn("_ingested_at", F.to_timestamp("_ingested_at"))
-        df.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(table)
-        print(f"[ok] [bronze] {table}: {len(rows)} rows")
+    def remember(rows: Iterator[tuple]) -> Iterator[tuple]:
+        for row in rows:
+            countries.setdefault(row[0], row[9])
+            yield row
+
+    def write(rows: Iterator[tuple], columns: tuple[str, ...], table: str) -> None:
+        total, started = 0, datetime.now()
+        for k, batch in enumerate(chunks(rows, args.chunk_size)):
+            df = spark.createDataFrame(batch, schema=", ".join(f"{c} STRING" for c in columns))
+            df = df.withColumn("_ingested_at", F.to_timestamp("_ingested_at"))
+            writer = df.write.mode("append") if k else df.write.mode("overwrite").option("overwriteSchema", "true")
+            writer.saveAsTable(table)
+            total += len(batch)
+        print(f"[ok] [bronze] {table}: {total} rows in {(datetime.now() - started).total_seconds():.0f}s")
+
+    # Customers must be exhausted before orders start: both draw from the same seeded stream.
+    write(remember(iter_customers(args.customers, rng)), CUSTOMER_COLUMNS,
+          f"{args.catalog}.customer_bronze.customers_raw")
+    write(iter_orders(args.orders, countries, rng), ORDER_COLUMNS, f"{args.catalog}.sales_bronze.orders_raw")
 
 
 if __name__ == "__main__":

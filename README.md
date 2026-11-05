@@ -77,7 +77,7 @@ flowchart LR
     GIT -. declared state .-> CHK
 ```
 
-**One catalog per environment** (`gov_dev`, `gov_prod`), schemas named `<domain>_<layer>` so a single
+**One catalog per environment** (`gov_dev`, `gov_test`, `gov_prod`), schemas named `<domain>_<layer>` so a single
 selector like `layers: [gold]` grants "all data products":
 
 ```
@@ -387,6 +387,7 @@ Every non-obvious choice is an ADR, including the ones forced by Free Edition:
 | [0008](docs/adr/0008-drift-and-pii-propagation.md) | Drift and PII propagation: report and fail, never auto-revoke |
 | [0009](docs/adr/0009-audit-views-and-scorecard.md) | Admin-owned audit views and a pipeline-built scorecard |
 | [0010](docs/adr/0010-right-to-erasure.md) | Right to erasure: hashed register, discovered scope, lineage gap check |
+| [0011](docs/adr/0011-three-stage-promotion.md) | dev → test → prod on one commit, each stage gated by a green pipeline run |
 
 **What changes in an enterprise account** (workspace-catalog binding, SCIM from the IdP, Private Link,
 customer-managed keys, SIEM delivery, keyed hashing for the erasure register…) is in
@@ -415,8 +416,17 @@ make erase ENV=dev REQUEST=DSR-0001 SUBJECT=C000042
 make drift ENV=dev         # declared vs actual, from your laptop
 ```
 
-In CI, every push to `main` deploys `dev` as the `gov-deployer` service principal; `prod` deploys from a
-manual workflow run behind a GitHub environment approval.
+In CI, every push to `main` deploys `dev` as the `gov-deployer` service principal. Promotion is one
+workflow run on one commit ([ADR-0011](docs/adr/0011-three-stage-promotion.md)):
+
+```mermaid
+flowchart LR
+    D[dev<br/>deploy + pipeline] -->|green| T[test<br/>deploy + pipeline]
+    T -->|green| A{approval}
+    A --> P[prod<br/>deploy]
+```
+
+A failed quality rule, drift, PII or erasure check in dev or test stops it before anyone is asked to approve.
 
 <details>
 <summary><b>Repository layout</b></summary>
@@ -434,7 +444,8 @@ src/audit/views.sql    audit views over system tables
 src/dashboards/        governance scorecard (AI/BI dashboard)
 src/transforms/        silver and gold SQL, one file per contract
 resources/             bundle resources: schemas, jobs, dashboard
-docs/                  plan, architecture, ADRs, RACI, production deltas
+docs/                  plan, architecture, ADRs, design (scalability and cost), RACI, production deltas
+.github/               CI, dev → test → prod deploy workflow, shared deploy-target action
 tests/                 spec, render, drift, lineage, erasure, scorecard, bundle-consistency tests
 ```
 

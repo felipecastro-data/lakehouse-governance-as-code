@@ -10,13 +10,13 @@ enterprise pattern — one workspace per environment with workspace-catalog bind
 
 ## Decision
 
-Model each environment as its own catalog (`gov_dev`, `gov_prod`) with an identical schema layout
+Model each environment as its own catalog (`gov_dev`, `gov_test`, `gov_prod`) with an identical schema layout
 `<domain>_<layer>` plus shared `governance` and `audit` schemas. Bundle targets point at the same
 workspace and differ by the `catalog` variable.
 
 ## Consequences
 
-- Promotion dev → prod is a change of target, not of code.
+- Promotion dev → test → prod is a change of target, not of code ([ADR-0011](0011-three-stage-promotion.md)).
 - Isolation is logical only: a principal with `USE CATALOG` on `gov_prod` can read prod from any
   compute. Mitigated by granting prod access to groups only and keeping humans read-only.
 - Moving to a multi-workspace setup only adds catalog bindings; the layout does not change.

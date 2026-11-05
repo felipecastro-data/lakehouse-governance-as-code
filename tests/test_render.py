@@ -48,6 +48,16 @@ def test_no_per_column_masks_or_filters(spec):
     assert "SET MASK" not in sql and "SET ROW FILTER" not in sql
 
 
+def test_test_environment_has_exactly_the_prod_access_model(spec):
+    """The promotion gate is only meaningful if test enforces what prod will (docs/adr/0011)."""
+    def normalised(env):
+        catalog = spec.catalog(env)
+        return {(sec.replace(catalog, "<catalog>"), who): p for (sec, who), p in expand_grants(spec, env).items()}
+
+    assert normalised("test") == normalised("prod")
+    assert normalised("test") != normalised("dev")
+
+
 def test_engineers_cannot_modify_prod(spec):
     prod = expand_grants(spec, "prod")
     dev = expand_grants(spec, "dev")

@@ -36,10 +36,10 @@ grants:
     environments: [dev]
     privileges: [USE_SCHEMA, SELECT, MODIFY, CREATE_TABLE]
 
-  - reason: Engineers are read-only in prod; only the deploy identity writes
+  - reason: Engineers are read-only in test and prod; only the deploy identity writes
     principals: [data_engineers]
     scope: {schemas: {layers: [bronze, silver, gold]}}
-    environments: [prod]
+    environments: [test, prod]
     privileges: [USE_SCHEMA, SELECT]
 
   - reason: Analysts consume gold data products only
