@@ -153,6 +153,14 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
   - Note: `restricted_tables` was 2, not 4. Bronze is classified from column lineage, and on a fresh catalog lineage lands after the run that wrote it (scorecard 16:02:21, first lineage row 16:02:31; ADR-0008). The next run classifies bronze.
   - 2026-10-30: prod daily schedule paused (`trigger_pause_status: PAUSED`) to save Free Edition quota; prod runs on demand with `make pipeline ENV=prod`.
 
+### Promotion dev → test → prod ([ADR-0011](adr/0011-three-stage-promotion.md))
+
+- [x] 2026-11-05: `deploy` run 42096503189 (`target=test`, `run_pipeline=false`) bootstrapped `gov_test`, owned by `gov-deployer`; `make audit-views ENV=test` as the admin.
+- [x] 2026-11-05: first full promotion, `deploy` run 42097954933 (`target=prod`) on commit `4a6fba5`: dev deploy + pipeline 50688243553813 green (6m 33s job), test deploy + pipeline 944946566837462 green (12m 26s job), prod approved and deployed (1m 45s).
+  - test scorecard: `pct_owned` 100 (3/3), `pct_classified` 100 (24/24), `pct_pii_masked` 100 (9/9), drift 0/0, `untagged_pii` 0, erasure 0/0. `restricted_tables` 2 on the first run, the same lineage lag as the first prod run.
+  - test's `drift` and `erasure_check` took 5m 27s each instead of ~30 s, waiting on serverless compute with three parallel tasks; outputs were clean (`0 critical, 0 warning`; `0 residual rows, 0 gaps`).
+- [x] 2026-11-05: scale run 573093414186903 in dev at 1M customers / 10M orders: 11 tasks green in 690 s ([scalability and cost](design/scalability-and-cost.md)).
+
 ## 10. Decisions
 
 | Decision | Choice |
