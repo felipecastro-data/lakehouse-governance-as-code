@@ -206,7 +206,7 @@ with the **viewer's** credentials (no embedded credentials).
 ==============================================================================
  1. DECLARE - policy lives in governance/*.yml
 ==============================================================================
-  2 environments, 2 domains, 8 schemas per catalog
+  3 environments, 2 domains, 8 schemas per catalog
   3 data contracts, 24 columns, 9 PII columns
   4 classification levels, 7 PII types, 10 groups, 9 grant rules
 
@@ -367,13 +367,13 @@ Measured in `gov_dev` by the pipeline's scorecard task:
 | Scale run, same pipeline and checks | **1.03M / 10.05M** | **11m 30s**, all 11 tasks green | ~2 DBU (estimate) |
 | `right-to-erasure-dev`, one request (erase + verify) | 5 tables | **1m 33s** | 0.32 DBU |
 
-At 200× the rows, every governance task (apply, drift, PII propagation, erasure check, scorecard) stayed
-within ±3 s: they read metadata, not data. The scorecard stayed 100 / 100 / 100 with 0 drift and 0 residual
+At 200× the rows, the drift, PII propagation, erasure check and scorecard tasks stayed within ±3 s, and
+governance apply was faster than its median (66 s vs 109 s, REST latency): they read metadata, not data. The scorecard stayed 100 / 100 / 100 with 0 drift and 0 residual
 rows. Only the single-threaded synthetic data generator grew. Details, cost per unit of work and how each
 control scales: [scalability-and-cost.md](docs/design/scalability-and-cost.md).
 
 Deployed to **`gov_prod`** through the approval-gated workflow: the first prod run was green on all 11 tasks,
-with the same 100% / 100% / 100% coverage and 0 drift. Since ADR-0011, prod is reached only by promotion: the first
+with the same 100% / 100% / 100% coverage and 0 drift. Since [ADR-0011](docs/adr/0011-three-stage-promotion.md), prod is reached only by promotion: the first
 dev → test → prod run passed the pipeline in dev and in `gov_test` (100 / 100 / 100, 0 drift) before the prod approval.
 
 **Proven acceptance tests** (recorded in [PLAN.md](docs/PLAN.md)):
