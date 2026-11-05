@@ -11,6 +11,13 @@ resources:
       schedule:
         quartz_cron_expression: "0 0 6 * * ?"
         timezone_id: UTC
+      # Bronze size. Defaults keep the daily run inside Free Edition quota; override for a scale run:
+      # databricks jobs run-now <id> --json '{"job_parameters": {"customers": "1000000", "orders": "10000000"}}'
+      parameters:
+        - name: customers
+          default: "5000"
+        - name: orders
+          default: "50000"
       tasks:
         - task_key: governance
           run_job_task:
@@ -21,7 +28,8 @@ resources:
           environment_key: default
           spark_python_task:
             python_file: ../src/jobs/generate_bronze.py
-            parameters: ["--catalog", "${var.catalog}"]
+            parameters: ["--catalog", "${var.catalog}", "--customers", "{{job.parameters.customers}}",
+                         "--orders", "{{job.parameters.orders}}"]
 
         # Sources re-deliver erased people, so the register is applied to every ingestion (docs/adr/0010).
         - task_key: erasure

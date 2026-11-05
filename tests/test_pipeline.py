@@ -94,3 +94,29 @@ def test_erasure_register_is_applied_between_ingestion_and_silver():
     assert "--verify" not in tasks["erasure"]["spark_python_task"]["parameters"]
     assert "--verify" in tasks["erasure_check"]["spark_python_task"]["parameters"]
     assert tasks["erasure_check"]["depends_on"] == [{"task_key": "quality"}]
+
+
+def test_streamed_generation_is_identical_to_the_in_memory_one():
+    """Chunked writes must not change the seeded data (bronze counts in the README stay valid)."""
+    from jobs.generate_bronze import chunks, iter_customers, iter_orders
+
+    customers, orders = _data()
+    rng = random.Random(7)
+    countries: dict[str, str] = {}
+    streamed = []
+    for batch in chunks(iter_customers(2_000, rng), 333):
+        for row in batch:
+            countries.setdefault(row[0], row[9])
+        streamed.extend(batch)
+    assert streamed == customers
+    assert [r for b in chunks(iter_orders(10_000, countries, rng), 999) for r in b] == orders
+
+
+def test_bronze_sizes_are_job_parameters_with_the_documented_defaults():
+    job = yaml.safe_load((ROOT / "resources" / "lakehouse_pipeline.job.yml").read_text())["resources"]["jobs"]
+    pipeline = job["lakehouse_pipeline"]
+    defaults = {p["name"]: p["default"] for p in pipeline["parameters"]}
+    assert defaults == {"customers": "5000", "orders": "50000"}
+    bronze = next(t for t in pipeline["tasks"] if t["task_key"] == "bronze")["spark_python_task"]["parameters"]
+    assert bronze[bronze.index("--customers") + 1] == "{{job.parameters.customers}}"
+    assert bronze[bronze.index("--orders") + 1] == "{{job.parameters.orders}}"
