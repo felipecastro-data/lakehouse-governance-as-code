@@ -466,21 +466,31 @@ tests/                 spec, render, drift, lineage, erasure, scorecard, bundle-
 
 </details>
 
-## 🧰 Tech stack
-
-**Databricks** Free Edition · **Unity Catalog** (governed tags, ABAC policies, system tables, lineage) ·
-**Databricks Asset Bundles** · serverless jobs · AI/BI dashboards · **Python 3.12** (`pyyaml` only) ·
-**SQL** · **ODCS v3** data contracts · **GitHub Actions** (OAuth M2M) · pytest · ruff · Mermaid
-
 ## 🏅 Author & Certifications
 
-**Felipe Castro**
-Senior Data Engineer @ EPAM Systems
+**Felipe Castro**<br>
+Senior Data Engineer @ EPAM Systems<br>
 [GitHub](https://github.com/felipecastro-data) · [LinkedIn](https://www.linkedin.com/in/felipecastro-data/)
 
 - 🏅 **[DP-700: Microsoft Certified: Fabric Data Engineer Associate](https://learn.microsoft.com/api/credentials/share/en-us/FelipeCastro-8026/96572499DF943EBC?sharingId=13D660F56C1DFFA3)**
 - 🏅 **[DP-600: Microsoft Certified: Fabric Analytics Engineer Associate](https://learn.microsoft.com/api/credentials/share/en-us/FelipeCastro-8026/6C5A2F5A8A5864FC?sharingId=13D660F56C1DFFA3)**
 - 🏅 **[PL-300: Microsoft Certified: Power BI Data Analyst Associate](https://learn.microsoft.com/api/credentials/share/en-us/FelipeCastro-8026/F853AABE365874B3?sharingId=13D660F56C1DFFA3)**
+
+---
+
+## 🚀 Tools & Tech
+
+![Databricks](https://img.shields.io/badge/Databricks-FF3621?style=flat&logo=databricks&logoColor=white)
+![Unity Catalog](https://img.shields.io/badge/Unity%20Catalog-1B3139?style=flat&logo=databricks&logoColor=white)
+![Asset Bundles](https://img.shields.io/badge/Asset%20Bundles-FF3621?style=flat&logo=databricks&logoColor=white)
+![Python](https://img.shields.io/badge/Python%203.12-3776AB?style=flat&logo=python&logoColor=white)
+![SQL](https://img.shields.io/badge/SQL-4479A1?style=flat&logoColor=white)
+![YAML](https://img.shields.io/badge/YAML%20%2F%20ODCS%20v3-CB171E?style=flat&logo=yaml&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=flat&logo=githubactions&logoColor=white)
+![pytest](https://img.shields.io/badge/pytest-0A9EDC?style=flat&logo=pytest&logoColor=white)
+![Ruff](https://img.shields.io/badge/Ruff-D7FF64?style=flat&logo=ruff&logoColor=black)
+![Mermaid](https://img.shields.io/badge/Mermaid-FF3670?style=flat&logo=mermaid&logoColor=white)
+![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)
 
 ---
 
