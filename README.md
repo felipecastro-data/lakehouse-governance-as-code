@@ -357,7 +357,20 @@ Measured in `gov_dev` by the pipeline's scorecard task:
 | Column lineage edges checked for PII leaks | 26 |
 | Raw PII columns found by lineage, without any tag | 9 |
 | Critical drift / untagged PII / erasure residual rows | **0 / 0 / 0** |
-| Unit + consistency tests | 90 |
+| Unit + consistency tests | 95 |
+
+**Runtimes and cost** (Jobs run history and `system.billing.usage`):
+
+| Run | Rows (bronze customers / orders) | Duration | Compute |
+|---|---|---:|---:|
+| `lakehouse-pipeline-dev`, daily (median of 5) | 5k / 50k | **5m 52s** | ~1.1 DBU (~$0.39 list) |
+| Scale run, same pipeline and checks | **1.03M / 10.05M** | **11m 30s**, all 11 tasks green | ~2 DBU (estimate) |
+| `right-to-erasure-dev`, one request (erase + verify) | 5 tables | **1m 33s** | 0.32 DBU |
+
+At 200× the rows, every governance task (apply, drift, PII propagation, erasure check, scorecard) stayed
+within ±3 s: they read metadata, not data. The scorecard stayed 100 / 100 / 100 with 0 drift and 0 residual
+rows. Only the single-threaded synthetic data generator grew. Details, cost per unit of work and how each
+control scales: [scalability-and-cost.md](docs/design/scalability-and-cost.md).
 
 Deployed to **`gov_prod`** through the approval-gated workflow: the first prod run was green on all 11 tasks,
 with the same 100% / 100% / 100% coverage and 0 drift.
@@ -389,7 +402,7 @@ Every non-obvious choice is an ADR, including the ones forced by Free Edition:
 | [0010](docs/adr/0010-right-to-erasure.md) | Right to erasure: hashed register, discovered scope, lineage gap check |
 | [0011](docs/adr/0011-three-stage-promotion.md) | dev → test → prod on one commit, each stage gated by a green pipeline run |
 
-**What changes in an enterprise account** (workspace-catalog binding, SCIM from the IdP, Private Link,
+**What changes in an enterprise account** (workspace-catalog binding, committed-use cost, SCIM from the IdP, Private Link,
 customer-managed keys, SIEM delivery, keyed hashing for the erasure register…) is in
 [production-deltas.md](docs/production-deltas.md). Free Edition limits are design inputs, not excuses.
 
@@ -411,6 +424,7 @@ Against a workspace (`databricks auth login` first):
 make apply ENV=dev         # catalog (SQL) + bundle deploy + governance_apply
 make audit-views ENV=dev   # once per env, as an account admin
 make pipeline ENV=dev      # data, checks, scorecard
+make pipeline-scale ENV=dev  # same run at 1M customers / 10M orders (job parameters)
 make demo ENV=dev          # the scripted walkthrough above
 make erase ENV=dev REQUEST=DSR-0001 SUBJECT=C000042
 make drift ENV=dev         # declared vs actual, from your laptop

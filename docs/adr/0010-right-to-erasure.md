@@ -69,4 +69,4 @@ records `erasure_requests` and `erasure_residual`.
   from erased sources; the gap check makes that decision explicit instead of silent.
 - Erasure applies to the whole register on every run, so its cost grows with the number of requests.
   At this scale it is a semi-join per table; at enterprise scale the register would be partitioned and
-  applied incrementally.
+  applied incrementally. Measured: 40 s over 10M orders ([scalability and cost](../design/scalability-and-cost.md)).

@@ -12,7 +12,7 @@ resources:
         quartz_cron_expression: "0 0 6 * * ?"
         timezone_id: UTC
       # Bronze size. Defaults keep the daily run inside Free Edition quota; override for a scale run:
-      # databricks jobs run-now <id> --json '{"job_parameters": {"customers": "1000000", "orders": "10000000"}}'
+      # databricks jobs run-now --json '{"job_id": <id>, "job_parameters": {"customers": "1000000", "orders": "10000000"}}'
       parameters:
         - name: customers
           default: "5000"
