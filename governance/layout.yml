@@ -2,6 +2,8 @@
 environments:
   dev:
     catalog: gov_dev
+  test:     # promotion gate: same commit, prod-like access (docs/adr/0011)
+    catalog: gov_test
   prod:
     catalog: gov_prod
 

@@ -31,6 +31,17 @@ targets:
       tags:
         environment: dev
 
+  # Promotion gate between dev and prod (docs/adr/0011): the deploy workflow runs the pipeline here
+  # on the commit about to reach prod. Same identity and root path as prod.
+  test:
+    variables:
+      catalog: gov_test
+    presets:
+      # Runs only as a promotion step, never on a schedule.
+      trigger_pause_status: PAUSED
+      tags:
+        environment: test
+
   prod:
     variables:
       catalog: gov_prod

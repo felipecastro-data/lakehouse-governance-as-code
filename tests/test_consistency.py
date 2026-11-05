@@ -27,6 +27,13 @@ def test_bundle_targets_match_environments(spec):
     assert targets == spec.layout.environments
 
 
+def test_only_dev_runs_on_a_schedule():
+    """test runs only as a promotion step and prod on demand (Free Edition quota, docs/design)."""
+    bundle = yaml.safe_load((ROOT / "databricks.yml").read_text())
+    paused = {name: cfg["presets"]["trigger_pause_status"] for name, cfg in bundle["targets"].items()}
+    assert paused == {"dev": "UNPAUSED", "test": "PAUSED", "prod": "PAUSED"}
+
+
 def test_generated_docs_are_current(spec):
     """Regenerate with: make docs"""
     from gov_engine.render import render_access_matrix
