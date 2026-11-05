@@ -149,7 +149,7 @@ What it shows:
 
 - **Every control holds at volume.** Quality rules, drift, lineage-based PII propagation and erasure
   verification all pass on 10M orders with the same results as on 50k.
-- **Governance cost doesn't move with rows.** The governance tasks stayed within ±3 s. They read
+- **Governance cost doesn't move with rows.** Drift, PII propagation, erasure check and scorecard stayed within ±3 s, and apply ran faster than its median (66 s vs 109 s), which tracks REST latency. They read
   metadata, as §1 claims.
 - **Even the row-scanning controls are cheap at 10M.** Erasure's hash-and-semi-join over five tables
   took 40 s. The incremental design in §3.4 is for ~10⁹ rows or a large register, not for this size.
