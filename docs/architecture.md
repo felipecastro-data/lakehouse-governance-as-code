@@ -39,6 +39,7 @@ flowchart LR
 ```mermaid
 flowchart TB
     M[(metastore)] --> DEV[gov_dev]
+    M --> TEST[gov_test]
     M --> PROD[gov_prod]
     PROD --> CB[customer_bronze] & CS[customer_silver] & CG[customer_gold]
     PROD --> SB[sales_bronze] & SS[sales_silver] & SG[sales_gold]
@@ -46,7 +47,7 @@ flowchart TB
     PROD --> AUD[audit<br/>views over system tables]
 ```
 
-`gov_dev` has the same structure. Schema names are `<domain>_<layer>`, so a grant can target
+`gov_dev` and `gov_test` have the same structure. Schema names are `<domain>_<layer>`, so a grant can target
 "all gold schemas" or "all customer schemas" with a selector in `access_policy.yml`.
 
 ## Ownership split
@@ -66,7 +67,7 @@ Each object has exactly one owner so the two systems never overwrite each other 
 | Logical principal | Group | Purpose |
 |---|---|---|
 | `platform_admins` | `gov-platform-admins` | Break-glass, sees all regions |
-| `data_engineers` | `gov-data-engineers` | Builds pipelines; write in dev, read-only in prod |
+| `data_engineers` | `gov-data-engineers` | Builds pipelines; write in dev, read-only in test and prod |
 | `analysts_amer` / `analysts_emea` | `gov-analysts-*` | Gold read, rows filtered by region, PII masked |
 | `pii_readers` | `gov-pii-readers` | Unmasks **confidential** columns |
 | `pii_restricted_readers` | `gov-pii-restricted-readers` | Unmasks **restricted** columns |

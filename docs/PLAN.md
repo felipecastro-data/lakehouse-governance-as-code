@@ -164,7 +164,7 @@ See [spike-checklist.md](spike-checklist.md). Design adjusts based on the result
 | Drift response | Report and fail on critical; never auto-revoke (ADR-0008) |
 | Audit views | SQL in repo, created and owned by an account admin; auditors read them through the `audit` schema ([ADR-0009](adr/0009-audit-views-and-scorecard.md)) |
 | Scorecard | Pipeline task as the deployer writes `audit` tables; dashboard queries with viewer credentials (ADR-0009) |
-| Environments | Two: `dev`, `prod` |
+| Environments | Three: `dev`, `test`, `prod`; prod only through a green test run ([ADR-0011](adr/0011-three-stage-promotion.md)) |
 | Contract format | ODCS v3 (subset + `customProperties`) |
 | Policy engine language | Python, `pyyaml` only (runs locally and on serverless) |
 | Group naming | `gov-<role>` (e.g. `gov-analysts-amer`) |
