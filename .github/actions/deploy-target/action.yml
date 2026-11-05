@@ -1,0 +1,48 @@
+# Deploy one bundle target as gov-deployer and, optionally, run the lakehouse pipeline there.
+# The calling job sets DATABRICKS_HOST / DATABRICKS_CLIENT_ID / DATABRICKS_CLIENT_SECRET
+# (OAuth M2M, docs/adr/0006). `bundle run` waits for the run and fails the step if any task fails,
+# which is what makes a pipeline run a promotion gate (docs/adr/0011).
+name: Deploy target
+description: Validate policy, ensure the catalog, deploy the bundle, apply governance, optionally run the pipeline.
+inputs:
+  target:
+    description: Bundle target (dev, test, prod)
+    required: true
+  run_pipeline:
+    description: Run lakehouse_pipeline after applying governance ('true' / 'false')
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - uses: databricks/setup-cli@v1.22.1
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - shell: bash
+      run: pip install -q pyyaml
+    # Policy is validated before anything reaches the workspace
+    - shell: bash
+      run: PYTHONPATH=src python -m gov_engine validate
+    # Default Storage rejects the bundle catalogs API, so the catalog is created with SQL first
+    - shell: bash
+      run: PYTHONPATH=src python -m gov_engine ensure-catalog --env "${{ inputs.target }}"
+    - shell: bash
+      run: databricks bundle deploy -t "${{ inputs.target }}"
+    - shell: bash
+      run: databricks bundle run -t "${{ inputs.target }}" governance_apply
+    - if: inputs.run_pipeline == 'true'
+      shell: bash
+      run: databricks bundle run -t "${{ inputs.target }}" lakehouse_pipeline
+    - name: Summary
+      if: always()
+      shell: bash
+      run: |
+        {
+          echo "### Deployed \`${{ inputs.target }}\` as gov-deployer (${GITHUB_SHA::7})"
+          echo "Pipeline run: ${{ inputs.run_pipeline }}"
+          echo ""
+          echo "| Resource | Name |"
+          echo "|---|---|"
+          databricks bundle summary -t "${{ inputs.target }}" -o json \
+            | python -c "import json,sys; r=json.load(sys.stdin)['resources']; [print(f'| {k} | {v.get(\"name\") or v.get(\"display_name\")} |') for g in r.values() for k,v in g.items()]"
+        } >> "$GITHUB_STEP_SUMMARY" || true

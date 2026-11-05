@@ -31,7 +31,7 @@ jobs:
       - name: Render plan and access matrix
         run: |
           mkdir -p plan
-          for env in dev prod; do
+          for env in dev test prod; do
             python -m gov_engine plan --env "$env" > "plan/$env.sql"
             python -m gov_engine matrix --env "$env" > "plan/$env-access-matrix.md"
           done
@@ -54,7 +54,6 @@ jobs:
         if: env.DATABRICKS_CLIENT_ID != ''
       - if: env.DATABRICKS_CLIENT_ID != ''
         run: |
-          databricks bundle validate -t dev
-          databricks bundle validate -t prod
+          for target in dev test prod; do databricks bundle validate -t "$target"; done
       - if: env.DATABRICKS_CLIENT_ID == ''
         run: echo "::notice::gov-deployer secrets not set - skipping bundle validation"

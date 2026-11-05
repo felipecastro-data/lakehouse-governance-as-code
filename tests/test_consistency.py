@@ -40,3 +40,16 @@ def test_generated_docs_are_current(spec):
 
     committed = (ROOT / "docs" / "generated" / "access-matrix-prod.md").read_text().strip()
     assert committed == render_access_matrix(spec, "prod").strip()
+
+
+def test_deploy_workflow_promotes_through_every_environment_in_order(spec):
+    """dev -> test -> prod, each stage needing the previous one, on one commit (docs/adr/0011)."""
+    workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "deploy.yml").read_text())
+    jobs = workflow["jobs"]
+    envs = list(spec.layout.environments)
+    assert envs == ["dev", "test", "prod"]
+    assert list(jobs) == envs
+    assert all(jobs[env]["environment"] == env for env in envs)
+    assert [jobs[env].get("needs") for env in envs] == [None, "dev", "test"]
+    choices = workflow[True]["workflow_dispatch"]["inputs"]["target"]["options"]  # YAML 1.1: `on` -> True
+    assert choices == envs
