@@ -373,7 +373,8 @@ rows. Only the single-threaded synthetic data generator grew. Details, cost per 
 control scales: [scalability-and-cost.md](docs/design/scalability-and-cost.md).
 
 Deployed to **`gov_prod`** through the approval-gated workflow: the first prod run was green on all 11 tasks,
-with the same 100% / 100% / 100% coverage and 0 drift.
+with the same 100% / 100% / 100% coverage and 0 drift. Since ADR-0011, prod is reached only by promotion: the first
+dev → test → prod run passed the pipeline in dev and in `gov_test` (100 / 100 / 100, 0 drift) before the prod approval.
 
 **Proven acceptance tests** (recorded in [PLAN.md](docs/PLAN.md)):
 
