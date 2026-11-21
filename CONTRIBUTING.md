@@ -3,9 +3,12 @@
 ## Workflow
 
 1. Branch from `main` (`feat/<topic>`, `fix/<topic>`, `docs/<topic>`).
-2. Open a pull request. CI validates the policy, runs the tests, renders the plan and access matrix,
-   validates the bundle for every target and checks the commit subjects.
-3. Merge to `main`, which deploys `dev` as the `gov-deployer` service principal.
+2. Open a pull request with a conventional title: it becomes the commit subject on `main`. CI validates
+   the policy, runs the tests, renders the plan and access matrix, validates the bundle for every target
+   and checks the commit subjects and the PR title.
+3. Squash-merge to `main` (the only merge method enabled), which deploys `dev` as the `gov-deployer`
+   service principal. `main` is protected: no direct pushes, and the `Conventional commits` check must
+   pass.
 4. Promote with the `deploy` workflow (`target: prod`): dev → test → prod on the same commit, prod behind
    an environment approval ([ADR-0011](docs/adr/0011-three-stage-promotion.md)).
 
@@ -27,8 +30,8 @@ Scopes follow the repo layout: `engine`, `jobs`, `bundle`, `governance`, `deploy
 
 - Summary in the imperative, at most 72 characters, no trailing period.
 - The body says **why**, especially for Free Edition workarounds.
-- One concern per commit (engine, jobs, resources, tests, docs), under ~500 changed lines.
-  Generated files (`docs/generated/`) and images don't count.
+- One feature per PR, under ~300 changed lines. Generated files (`docs/generated/`) and images
+  don't count.
 
 Check before pushing:
 

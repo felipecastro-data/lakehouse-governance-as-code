@@ -2,6 +2,7 @@ name: ci
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
 
@@ -15,6 +16,10 @@ jobs:
         with:
           fetch-depth: 0
       - run: scripts/check_commits.sh "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+      - name: PR title (becomes the squash commit on main)
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: scripts/check_commits.sh --subject "$TITLE"
 
   policy:
     name: Validate policy and test engine
